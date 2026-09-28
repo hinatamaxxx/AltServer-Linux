@@ -54,7 +54,7 @@ Recovery acts after three consecutive failures and uses a five-minute restart co
 
 ## Validation and building
 
-This fork is a **preview**. Physical iPhone install/refresh, full-host reboot recovery and long-duration operation have not been tested for this version. Earlier successful iPhone tests belong to the predecessor setup. See [verification](docs/verification.md).
+This fork is a **preview**. With v0.2.1 on an existing Debian server and an iPhone running iOS 27.0 / AltStore Classic 2.3, the user confirmed that an installed app opened after a refresh without another trust action. Clean installation, full-host reboot recovery and long-duration operation remain unverified. See [verification](docs/verification.md).
 
 ```sh
 git clone --recursive https://github.com/hinatamaxxx/AltServer-Linux.git

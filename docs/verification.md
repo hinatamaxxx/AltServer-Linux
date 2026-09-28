@@ -1,6 +1,16 @@
 # 検証記録 / Verification
 
-## v0.2.0
+## v0.2.1 — 実機確認 / Hardware verification
+
+2026-09-29（JST）、既存のDebianサーバー、公式netmuxd v0.4.3への直接接続、iOS 27.0、AltStore Classic 2.3で手動リフレッシュを確認しました。旧アドレス変換アダプターは停止した状態です。v0.2.0では証明書が変わらないまま、4件の既存プロファイルをすべて削除してから登録し直した後に、信頼切れが再発しました。v0.2.1では4件の登録が4件の削除に先行し、利用者が再度の信頼操作なしでアプリを開けたと確認しました。1台・手動更新での結果です。新規セットアップ、ホスト再起動後の復旧、長時間稼働は未検証です。
+
+生成された本番の更新処理を模擬プロファイルストアにつなぐ14ケースを追加しました。iOS 17の従来順序、iOS 18/27の信頼維持、非アクティブ項目の整理、OS情報を取得できない場合、登録失敗、空の要求を検査します。[CI結果](https://github.com/hinatamaxxx/AltServer-Linux/actions/runs/36443917016)。
+
+On September 29, 2026 (JST), a manual refresh was tested using an existing Debian server, a direct connection to official netmuxd v0.4.3, iOS 27.0 and AltStore Classic 2.3, with the old address adapter stopped. With v0.2.0, unchanged signing certificates and removal of all four old profiles before replacement coincided with another trust prompt. With v0.2.1, all four installations preceded the four removals, and the user confirmed that the refreshed app opened without another trust action. This covers one device and a manual refresh. Clean setup, full-host reboot recovery and long-duration operation remain unverified.
+
+Fourteen cases exercise the generated production refresh method against a simulated profile store: legacy ordering on iOS 17, trust continuity on iOS 18/27, inactive cleanup, unavailable OS metadata, installation failures and empty requests. [CI results](https://github.com/hinatamaxxx/AltServer-Linux/actions/runs/36443917016).
+
+## v0.2.0 — 公開時の記録 / At publication
 
 CI は Python 35件、CLI 8ケース、実際にビルドした端末ライブラリによる模擬通信16ケースを実行します。Linux/BSD IPv4・IPv6、短い入力、空データ、未対応 family、過大な入力を含み、BSD の全256通りの長さ値を両形式で検査します。
 

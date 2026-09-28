@@ -54,7 +54,7 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 
 ## 検証・ビルド
 
-本フォークは **プレビュー版**です。この版での iPhone 実機への導入・更新、ホスト再起動後の復旧、長時間稼働は未検証です。以前の実機成功例は旧セットアップの結果です。詳細は[検証記録](docs/verification.md)を参照してください。
+本フォークは **プレビュー版**です。v0.2.1では、既存のDebianサーバーとiOS 27.0 / AltStore Classic 2.3を使い、インストール済みアプリのリフレッシュ後に信頼を再設定せず起動できることを確認しました。新規導入、ホスト再起動後の復旧、長時間稼働は未検証です。詳細は[検証記録](docs/verification.md)を参照してください。
 
 ```sh
 git clone --recursive https://github.com/hinatamaxxx/AltServer-Linux.git
