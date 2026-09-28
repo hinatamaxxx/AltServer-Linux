@@ -4,7 +4,7 @@
 
 A fork of [NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux), combining fixes in AltServer itself with the recovery tools from [altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover).
 
-Setup installs AltServer, official netmuxd v0.4.3, its compatibility adapter, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host; Anisette runs in Docker. systemd starts and monitors the services.
+Setup installs AltServer, official netmuxd v0.4.3, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host; Anisette runs in Docker. systemd starts and monitors the services.
 
 ## Quick start
 
@@ -33,6 +33,7 @@ Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release a
 
 ## Changes
 
+- v0.1.3: Remove the compatibility adapter and adopt jaakkopalvaila's libimobiledevice patch, so AltServer handles Linux/BSD IPv4 and IPv6 addresses directly. Address copy lengths are additionally bounded. This does not imply that the patch has been merged into official upstream.
 - v0.1.2: Fix the Bonjour helper's 64-bit types and text/binary argument handling, and report registration API failures to the parent process. Following AltKeeper's approach, reject invalid JSON request lengths before reading the body and cap JSON frames at 4 MiB. This limit does not apply to IPA payloads.
 - v0.1.1: Integrate Apple ID client-header and GSA connection fixes reported by other forks, plus the same ldid source as AltServer for Windows 1.7.4, to address signing errors on newer iOS versions. See the [fork review](docs/fork-review.md) for sources and selection decisions. Live Apple sign-in and operation on a physical iPhone remain unverified.
 - Enable GSA TLS certificate validation, removing the inherited verification bypass.
@@ -41,8 +42,8 @@ Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release a
 - Fix `-h` / `--help`, missing install arguments, `-a` falling through to `-p`, unreadable IPA files and failure exit codes.
 - Detect zero-byte transfers or invalid transfer sizes over USB instead of looping indefinitely.
 - Preserve Anisette identity and provisioning state across container replacement.
-- Adapt network addresses without modifying netmuxd; re-register the configured phone through its official API.
-- Recover adapter and netmuxd failures separately. Check services even while the phone is away.
+- Connect AltServer directly to official netmuxd at `127.0.0.1:27015`; re-register the configured phone through its official API.
+- Monitor and recover netmuxd directly. Check services even while the phone is away.
 
 Recovery acts after three consecutive failures and uses a five-minute restart cooldown. Checks run 15 seconds after the preceding check finishes. `healthy` is a server/protocol result, not proof of a successful app refresh. `waiting_for_device` is expected while the phone is away. Automatic checks do not sign in to Apple or refresh apps.
 

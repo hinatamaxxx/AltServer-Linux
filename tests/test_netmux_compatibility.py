@@ -24,8 +24,11 @@ class WireFormatTests(unittest.TestCase):
                          "native-linux-ipv6")
 
     def test_short_and_invalid_values_fail_closed(self):
-        for value in (None, "02000000", b"", b"\x02\x00", b"\x10\x02" + bytes(6)):
-            self.assertNotIn(compat.classify(value), ("legacy-bsd-ipv4", "bsd-ipv4", "bsd-ipv6"))
+        for value in (None, "02000000", b"", b"\x02\x00", b"\x10\x02" + bytes(6),
+                      b"\x02\x00" + bytes(198), b"\x0a\x00" + bytes(26 - 1),
+                      b"\x1c\x1e" + bytes(254)):
+            self.assertNotIn(compat.classify(value), ("legacy-bsd-ipv4", "bsd-ipv4", "bsd-ipv6",
+                                                     "native-linux-ipv4", "native-linux-ipv6"))
 
     def inspect_response(self, payload=None, raw=None):
         if raw is None:

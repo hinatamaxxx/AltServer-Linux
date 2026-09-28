@@ -4,7 +4,7 @@
 
 [NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux) のフォークです。本体の不具合修正と、[altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover) の復旧機能をまとめています。
 
-AltServer、公式 netmuxd v0.4.3、互換アダプター、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上で動作し、systemd が起動と監視を担当します。
+AltServer、公式 netmuxd v0.4.3、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上で動作し、systemd が起動と監視を担当します。
 
 ## 簡単な導入
 
@@ -33,6 +33,7 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 
 ## 主な修正
 
+- v0.1.3: 互換アダプターを削除し、jaakkopalvaila の libimobiledevice 修正を取り込みました。AltServer が Linux/BSD の IPv4・IPv6 アドレスを直接扱います。コピー長の境界値も補強しています。公式上流へのマージを意味するものではありません。
 - v0.1.2: Bonjour ヘルパーの64ビット型・文字列とバイナリの受け渡しを修正し、登録 API の失敗を親プロセスへ返します。AltKeeper を参考に JSON 要求を 4 MiB までに制限し、不正な長さを本文受信前に拒否します。IPA 本体のサイズ制限ではありません。
 - v0.1.1: 他フォークで報告された Apple ID 認証ヘッダーと GSA 接続の修正、AltServer for Windows 1.7.4 と同じ ldid ソースを取り込み。新しい iOS での署名エラーへの対応が目的です。出典と採否は[フォーク調査](docs/fork-review.md)を参照してください。Apple への実ログインと iPhone 実機での動作は未検証です。
 - GSA の TLS 証明書検証を有効化し、既存コードにあった検証の無効化を除去。
@@ -41,8 +42,8 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 - `-h` / `--help`、IPA 導入時の引数不足、`-a` から `-p` への処理の流れ込み、読めない IPA、失敗時の終了コードを修正。
 - USB 通信のゼロバイト転送や不正サイズを検出し、無限ループを防止。
 - Anisette の端末 ID と認証状態をコンテナの置き換え時も保持。
-- netmuxd 本体を改造せずアドレス形式を変換し、公式 API で設定済み iPhone を再登録。
-- アダプターと netmuxd の障害を区別して復旧。iPhone 不在時もサービスを確認。
+- AltServer は公式 netmuxd に `127.0.0.1:27015` で直接接続し、公式 API で設定済み iPhone を再登録。
+- netmuxd を直接監視して復旧。iPhone 不在時もサービスを確認。
 
 復旧は3回連続失敗後に行い、サービス再起動は5分間の間隔を確保します。確認の終了から15秒後に次の確認を開始します。`healthy` はサーバー・プロトコルの確認結果で、アプリ更新の成功を保証するものではありません。iPhone が不在なら `waiting_for_device` が通常の待機状態です。自動確認は Apple へのログインやアプリ更新を行いません。
 

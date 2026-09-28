@@ -16,7 +16,7 @@
 
 ### 今回は採用しなかった変更
 
-- jaakkopalvaila の libimobiledevice アドレス修正: 既存の loopback アダプターで同じ Linux/BSD 形式差を処理しています。端末のコピー長の扱いも別途検証が必要なため、現行のアダプターを維持しました。
+- jaakkopalvaila の libimobiledevice アドレス修正は v0.1.1 では保留し、コピー長の補強と試験を追加して v0.1.3 で採用しました（下記参照）。
 - [Ben-Diehlci / PR #138](https://github.com/NyaMisty/AltServer-Linux/pull/138): Web UI と別のサービス構成への移行は対象外です。GSA 接続修正は採用内容と重複します。v0.1.2 では、このフォークの Bonjour 引数・型定義の修正を部分的に取り込みました（下記参照）。
 - [Rogue911 / PR #136](https://github.com/NyaMisty/AltServer-Linux/pull/136): corecrypto ビルド環境の修正。現在のビルドは検証済みのイメージをダイジェスト固定で使用しており、この環境を再構築しないため未採用。
 - [datspike](https://github.com/datspike/AltServer-Linux)、[carck](https://github.com/carck/AltServer-Linux)、[BartSiwek](https://github.com/BartSiwek/AltServer-Linux): 認証、依存ライブラリ、ARM64、ビルド変更の差分も比較。重複修正や、今回の amd64 配布対象を超える変更はまとめて取り込んでいません。
@@ -42,7 +42,7 @@ Our Linux source rewriter changes the inherited `set_validate_certificates(false
 
 ### Changes not adopted
 
-- The jaakkopalvaila libimobiledevice address patch overlaps with our loopback adapter. Its address copy-length handling needs separate validation, so the existing adapter remains.
+- The jaakkopalvaila libimobiledevice address patch was deferred in v0.1.1, then adopted in v0.1.3 with bounded copies and additional tests (see below).
 - [Ben-Diehlci / PR #138](https://github.com/NyaMisty/AltServer-Linux/pull/138): switching to its web UI and service stack remains outside this update. Its GSA fix overlaps with the adopted change. v0.1.2 selectively adopts its Bonjour argument/type corrections, as described below.
 - [Rogue911 / PR #136](https://github.com/NyaMisty/AltServer-Linux/pull/136) repairs the corecrypto build environment. We use a verified builder image pinned by digest and do not rebuild that environment here.
 - We also compared authentication, dependency, ARM64 and build changes in [datspike](https://github.com/datspike/AltServer-Linux), [carck](https://github.com/carck/AltServer-Linux) and [BartSiwek](https://github.com/BartSiwek/AltServer-Linux). Duplicate fixes and broader changes beyond the amd64 distribution were not imported wholesale.
@@ -71,3 +71,23 @@ Bonjour は本番 C++ ブリッジと Python ヘルパーを模擬共有ライ�
 - **Also reviewed**: [dreth/Altserver-docker startup](https://github.com/dreth/Altserver-docker/blob/5d9794577c5fe736b04ab67eab08d6e012e012c7/scripts/docker-entrypoint.sh) and [althea setup/pairing](https://github.com/vyvir/althea/blob/215d8aaa748fe9bb0d18446ceaee242e40683719/main.py). These overlap with our setup; fetching binaries on every startup and moving to a GUI were not adopted.
 
 Five Bonjour tests connect the production C++ bridge and Python helper to a fake shared library. They cover quotes, newlines, Japanese text, high-bit bytes and NUL, NULL versus empty strings, registration failure, missing Python and a hung API call. JSON tests compile the generated production `ReceiveRequest` against a fake transport, checking that invalid lengths never trigger a body read and that two-byte and 4 MiB requests succeed.
+
+## v0.1.3: アダプターを廃止してネイティブ対応
+
+[jaakkopalvaila/libimobiledevice 3ab9370](https://github.com/jaakkopalvaila/libimobiledevice/commit/3ab93704206b11cdf9485db1f49e62d57c1d4dce) にサブモジュールを固定し、Linux/BSD の IPv4・IPv6 形式を AltServer 内で解釈します。これはフォークからの取り込みで、公式上流へのマージを意味しません。netmuxd v0.4.3 自体は公式配布物をそのまま使用します。
+
+取り込み元の BSD 処理は `sa_len` をそのままコピー長に使っていました。ローカルのソース変換で IPv4 は16バイト、IPv6 は28バイトに固定し、短い割り当てや200バイトの入力バッファを超える読み出しを防ぎます。接続先の構造体もゼロ初期化します。この補強は生の通信データの長さをすべて検証するものではありません。
+
+CI では本番の libimobiledevice/libusbmuxd を模擬 usbmux サーバーと TCP 接続先に接続し、Linux IPv4（16・128・152バイト）、BSD IPv4（sa_len が16・10・255）、Linux/BSD IPv6、未対応 family の拒否を確認します。さらに BSD の全256通りの長さ値を IPv4・IPv6 の両方で試験します。実機や Apple のサービスは使用しません。
+
+`altserver-netmux-compat` のスクリプト・unit・監視を削除し、公式 netmuxd が loopback の27015番ポートを直接使用します。旧設定の自動移行は行わず、バージョン違いの準備状態を拒否します。
+
+## v0.1.3: Native support replaces the adapter
+
+Pin the submodule to [jaakkopalvaila/libimobiledevice 3ab9370](https://github.com/jaakkopalvaila/libimobiledevice/commit/3ab93704206b11cdf9485db1f49e62d57c1d4dce), so AltServer decodes Linux/BSD IPv4 and IPv6 addresses internally. This is adoption from a fork, not a claim of an official upstream merge. netmuxd v0.4.3 remains the unmodified official distribution.
+
+The source patch used the BSD `sa_len` byte directly as the copy length. Our source rewriter fixes the copy size at 16 bytes for IPv4 and 28 for IPv6, preventing short allocations and reads beyond the 200-byte input buffer. The destination socket structure is also zero-initialized. This correction does not validate every raw wire-data length.
+
+CI connects the production libimobiledevice/libusbmuxd to a synthetic usbmux server and TCP listener. Cases cover Linux IPv4 (16, 128 and 152 bytes), BSD IPv4 (sa_len 16, 10 and 255), Linux/BSD IPv6 and rejection of an unsupported family. All 256 BSD length-byte values are also tested for both IPv4 and IPv6. These checks use no physical device or Apple service.
+
+The `altserver-netmux-compat` script, unit and monitoring are removed; official netmuxd listens directly on loopback port 27015. Existing setups are not automatically migrated, and preparation state from another version is rejected.

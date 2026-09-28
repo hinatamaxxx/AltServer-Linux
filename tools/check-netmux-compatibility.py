@@ -24,7 +24,8 @@ def receive(sock, size):
 
 
 def classify(address):
-    if not isinstance(address, bytes) or len(address) < 8:
+    # The pinned libusbmuxd accepts data only below its 200-byte buffer size.
+    if not isinstance(address, bytes) or not 8 <= len(address) < 200:
         return "invalid"
     # The released legacy v0.1.4 uses sa_len=10 for IPv4, although the
     # conventional BSD sockaddr_in is 16 bytes. Report it separately.
