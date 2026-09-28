@@ -10,6 +10,7 @@ checks = [
     ['tools/check-request-framing.py'],
     ['tools/check-native-netmux.py'],
     ['tools/check-error-mapping.py'],
+    ['tools/check-profile-refresh.py'],
 ]
 failures = []
 for command in checks:

@@ -205,6 +205,67 @@ void AltServerApp::Stop()
 }
 ''')
 
+if F.endswith('DeviceManager.cpp'):
+    content = content.replace(b'\r', b'')
+    start = b'pplx::task<void> DeviceManager::InstallProvisioningProfiles('
+    end = b'pplx::task<void> DeviceManager::RemoveProvisioningProfiles('
+    if content.count(start) != 1 or content.count(end) != 1:
+        raise RuntimeError('Review provisioning refresh boundaries after an upstream update')
+    before, method = content.split(start)
+    method, after = method.split(end)
+    marker = b'\t\t\tif (activeProfiles.has_value())'
+    if method.count(marker) != 1:
+        raise RuntimeError('Review provisioning refresh cleanup after an upstream update')
+    # Extend the official InstallApp iOS 18 trust fix (5da5175) to profile-only
+    # refreshes. Never create a gap with no profiles for the signing identity.
+    method = method.replace(marker, b'''            /* Preserve developer trust while replacing profiles on iOS 18+. */
+            plist_t versionPlist = NULL;
+            char* versionString = NULL;
+            OperatingSystemVersion refreshOSVersion = {18, 0, 0};
+            if (lockdownd_get_value(client, NULL, "ProductVersion", &versionPlist) == LOCKDOWN_E_SUCCESS && versionPlist != NULL)
+            {
+                plist_get_string_val(versionPlist, &versionString);
+                if (versionString != NULL)
+                {
+                    try
+                    {
+                        auto parsedVersion = OperatingSystemVersion(versionString);
+                        if (parsedVersion.majorVersion > 0) refreshOSVersion = parsedVersion;
+                    }
+                    catch (const std::exception&)
+                    {
+                        // Unknown version: prefer preserving the existing trust.
+                    }
+                    free(versionString);
+                }
+            }
+            if (versionPlist != NULL) plist_free(versionPlist);
+
+            if (refreshOSVersion.majorVersion >= 18)
+            {
+                // Install first. If installation fails, retain the existing profiles.
+                for (auto& profile : provisioningProfiles)
+                {
+                    this->InstallProvisioningProfile(profile, mis);
+                }
+                if (activeProfiles.has_value() && !provisioningProfiles.empty())
+                {
+                    // Keep active apps and every profile from this request. Only
+                    // remove inactive free profiles after replacements succeeded.
+                    auto retainedBundleIdentifiers = activeProfiles.value();
+                    for (auto& profile : provisioningProfiles)
+                    {
+                        retainedBundleIdentifiers.insert(profile->bundleIdentifier());
+                    }
+                    this->RemoveAllFreeProvisioningProfilesExcludingBundleIdentifiers(retainedBundleIdentifiers, mis);
+                }
+                cleanUp();
+                return;
+            }
+
+''' + marker)
+    content = before + start + method + end + after
+
 if F.endswith('ClientConnection.cpp'):
     old = b'int expectedBytes = *((int32_t*)data.data());'
     if content.count(old) != 1:
