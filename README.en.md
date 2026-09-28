@@ -8,7 +8,9 @@ The direct parent is **NyaMisty's unofficial Linux port**, not an official Linux
 
 See [sources and URLs](docs/provenance.md) and the [official-source review and adoption policy](docs/upstream-review.md). Download and open the [HTML source directory](docs/sources.html) in a browser for links that open in a new tab. GitHub README links cannot force this behavior; use Ctrl+click (Command+click on Mac).
 
-Setup installs AltServer, official netmuxd v0.4.3, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host; Anisette runs in Docker. systemd starts and monitors the services.
+Setup installs AltServer, official netmuxd, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host; Anisette runs in Docker. systemd starts and monitors the services.
+
+The tested version of netmuxd is **v0.4.3**. Setup downloads this version.
 
 ## Quick start
 
