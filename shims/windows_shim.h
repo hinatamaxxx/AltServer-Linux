@@ -1,3 +1,5 @@
+#pragma once
+
 #define _chmod chmod
 #define _close close
 #define _open ::open
