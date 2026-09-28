@@ -33,6 +33,8 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 
 ## 主な修正
 
+- v0.1.1: 他フォークで報告された Apple ID 認証ヘッダーと GSA 接続の修正、AltServer for Windows 1.7.4 と同じ ldid ソースを取り込み。新しい iOS での署名エラーへの対応が目的です。出典と採否は[フォーク調査](docs/fork-review.md)を参照してください。Apple への実ログインと iPhone 実機での動作は未検証です。
+- GSA の TLS 証明書検証を有効化し、既存コードにあった検証の無効化を除去。
 - Anisette の日時をホストのタイムゾーンに依存せず UTC として解釈。日付と64ビット routing info を検証。
 - Anisette 応答値のデバッグ出力を除去。HTTP 要求に15秒の制限を設定。
 - `-h` / `--help`、IPA 導入時の引数不足、`-a` から `-p` への処理の流れ込み、読めない IPA、失敗時の終了コードを修正。

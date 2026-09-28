@@ -93,7 +93,7 @@ def verify(path, root):
     cms = slots[0x10000][8:]
     (root / 'cms.der').write_bytes(cms)
     (root / 'cd.bin').write_bytes(slots[0])
-    run('openssl', 'smime', '-verify', '-inform', 'DER', '-in', str(root / 'cms.der'),
+    run('openssl', 'smime', '-verify', '-binary', '-inform', 'DER', '-in', str(root / 'cms.der'),
         '-content', str(root / 'cd.bin'), '-noverify', '-out', str(root / 'verified.bin'))
     # 1.2.840.113635.100.9.2, containing SHA-1 and SHA-256 OID/digest pairs.
     attributes = find_attribute(cms, bytes.fromhex('2a864886f763640902'))

@@ -18,7 +18,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 HOME = Path('/opt/altserver-native')
 ENV = Path('/etc/altserver-native.env')
-TAG = 'v0.1.0'
+TAG = 'v0.1.1'
 RELEASE = f'https://github.com/hinatamaxxx/AltServer-Linux/releases/download/{TAG}'
 NETMUX_URL = ('https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/'
               'netmuxd-x86_64-unknown-linux-gnu.tar.gz')

@@ -33,10 +33,12 @@ Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release a
 
 ## Changes
 
+- v0.1.1: Integrate Apple ID client-header and GSA connection fixes reported by other forks, plus the same ldid source as AltServer for Windows 1.7.4, to address signing errors on newer iOS versions. See the [fork review](docs/fork-review.md) for sources and selection decisions. Live Apple sign-in and operation on a physical iPhone remain unverified.
+- Enable GSA TLS certificate validation, removing the inherited verification bypass.
 - Parse Anisette timestamps as UTC regardless of the host timezone; validate dates and 64-bit routing info.
 - Remove Anisette response values from debug output and set a 15-second HTTP request timeout.
 - Fix `-h` / `--help`, missing install arguments, `-a` falling through to `-p`, unreadable IPA files and failure exit codes.
-- Detect zero-progress or invalid wired transfers instead of looping indefinitely.
+- Detect zero-byte transfers or invalid transfer sizes over USB instead of looping indefinitely.
 - Preserve Anisette identity and provisioning state across container replacement.
 - Adapt network addresses without modifying netmuxd; re-register the configured phone through its official API.
 - Recover adapter and netmuxd failures separately. Check services even while the phone is away.

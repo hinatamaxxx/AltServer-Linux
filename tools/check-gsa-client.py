@@ -24,6 +24,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         data = str(self.connection_id).encode()
         self.send_response(200)
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         self.wfile.write(data)
@@ -57,6 +58,7 @@ int main(int argc, char** argv) {
     assert(second.client_config().validate_certificates());
     auto a = first.request(web::http::methods::GET).get().extract_string().get();
     auto b = second.request(web::http::methods::GET).get().extract_string().get();
+    assert(!a.empty() && !b.empty());
     assert(a != b); // different accepted TCP sockets, even with keep-alive enabled
 }
 '''

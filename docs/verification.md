@@ -1,5 +1,9 @@
 # 検証記録 / Verification
 
+v0.1.1 の CI には、署名の暗号学的検証と完全なハッシュの確認、GSA の TCP 接続分離と TLS 検証設定の確認を追加しています。使用するのは架空のアプリ、一時的なテスト証明書、ローカルサーバーです。[フォーク調査](fork-review.md)に方法と限界を記載しています。以下の34件・6ケースの検証も引き続き実行します。
+
+For v0.1.1, CI additionally checks cryptographic signatures, full agility hashes, separate GSA TCP connections and the TLS-validation setting, using a synthetic app, disposable test identity and local server. The [fork review](fork-review.md) describes methods and limits. The 34 regression tests and six CLI cases below continue to run.
+
 ## 日本語
 
 このプレビューでは、iPhone を使わずに実施できる検証を対象とします。Python の通信・復旧・移行・設定テスト、C++ の UTC / routing info テスト、ソースからの amd64 ビルド、生成された実行ファイルの CLI テストを CI で実行します。

@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish the verified v0.1.0 preview assets
+        description: Publish the verified v0.1.1 preview assets
         type: boolean
         default: false
 permissions:
@@ -69,6 +69,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create v0.1.0 dist/AltServer-x86_64 dist/AltServer-Linux-amd64-setup.tar.gz dist/SHA256SUMS \
-            --target "$GITHUB_SHA" --prerelease --title 'v0.1.0 — Preview / プレビュー' \
-            --notes-file docs/release-v0.1.0.md
+          gh release create v0.1.1 dist/AltServer-x86_64 dist/AltServer-Linux-amd64-setup.tar.gz dist/SHA256SUMS \
+            --target "$GITHUB_SHA" --prerelease --title 'v0.1.1 — Preview / プレビュー' \
+            --notes-file docs/release-v0.1.1.md
