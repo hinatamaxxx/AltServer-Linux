@@ -53,7 +53,9 @@ include $(ROOT_DIR)/makefiles/dnssd_loader-build/dnssd_loader-files.mak
 
 #INC_CFLAGS := -Ilibraries
 INC_CFLAGS += $(libimobiledevice_include)
-INC_CFLAGS += -I$(LIB_DIR)
+# DeviceManager uses libimobiledevice's private device connection type. Match
+# the OpenSSL backend selected by our native-library config.h.
+INC_CFLAGS += -I$(LIB_DIR) -DHAVE_OPENSSL
 INC_CFLAGS += -I$(BUILD_DIR)
 INC_CFLAGS += $(libplist_include)
 INC_CFLAGS += $(altsign_include)
