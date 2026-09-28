@@ -7,7 +7,8 @@ RUN test -f upstream_repo/AltServer/AltServerApp.cpp \
     && mkdir -p build \
     && cd build \
     && make -f ../Makefile -j2
-RUN clang++ tests/ldid_main.cpp build/objs/ldid_patched/ldid.cpp.o \
+RUN apk add --no-cache openssl \
+    && clang++ tests/ldid_main.cpp build/objs/ldid_patched/ldid.cpp.o \
       build/objs/ldid_patched/lookup2.c.o build/libplist.a \
       -lssl -lcrypto -lz -o /tmp/test-ldid \
     && python3 tools/check-signing.py /tmp/test-ldid \

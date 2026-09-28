@@ -14,7 +14,11 @@ import tempfile
 
 
 def run(*args):
-    return subprocess.check_output(args, stderr=subprocess.STDOUT)
+    try:
+        return subprocess.check_output(args, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as error:
+        sys.stderr.write(error.output.decode(errors='replace'))
+        raise
 
 
 def macho():
