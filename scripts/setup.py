@@ -23,6 +23,7 @@ RELEASE = f'https://github.com/hinatamaxxx/AltServer-Linux/releases/download/{TA
 NETMUX_URL = ('https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/'
               'netmuxd-x86_64-unknown-linux-gnu.tar.gz')
 NETMUX_SHA = '85b6598284fc639f2a282584461d05e2090b79bdf3ec949d2a5e5d3dc655dde4'
+ANISETTE_IMAGE = 'dadoum/anisette-v3-server@sha256:1e20384985d3c49965f444bef39d627768dacc39ea0dca91f2a535edb7591ba3'
 
 
 def run(*args, **kwargs):
@@ -133,17 +134,17 @@ def prepare():
         for binary in (alt, stage / 'netmuxd'):
             binary.chmod(0o755)
             run(str(binary), '--help', stdout=subprocess.DEVNULL, timeout=15)
-        run('docker', 'pull', 'dadoum/anisette-v3-server:latest')
+        run('docker', 'pull', ANISETTE_IMAGE)
         # Record the immutable digest actually pulled; later starts never track latest.
-        image = json.loads(output('docker', 'image', 'inspect', 'dadoum/anisette-v3-server:latest'))[0]
+        image = json.loads(output('docker', 'image', 'inspect', ANISETTE_IMAGE))[0]
         digests = [v for v in image.get('RepoDigests', []) if v.startswith('dadoum/anisette-v3-server@sha256:')]
-        if not digests:
+        if ANISETTE_IMAGE not in digests:
             raise ValueError('No immutable anisette image digest found')
         HOME.mkdir(parents=True, exist_ok=True)
         (HOME / 'logs').mkdir(exist_ok=True)
         atomic_write(HOME / 'bin/AltServer', alt.read_bytes(), 0o755)
         atomic_write(HOME / 'bin/netmuxd', (stage / 'netmuxd').read_bytes(), 0o755)
-        atomic_write(HOME / 'anisette-image', (digests[0] + '\n').encode())
+        atomic_write(HOME / 'anisette-image', (ANISETTE_IMAGE + '\n').encode())
         atomic_write(HOME / 'setup-state.json', json.dumps(dict(version=TAG, phase='prepared')).encode())
     print('Prepared. No iPhone required; AltServer has not been activated.')
     print('Later: connect and trust one iPhone by USB, then sudo sh install.sh --configure')

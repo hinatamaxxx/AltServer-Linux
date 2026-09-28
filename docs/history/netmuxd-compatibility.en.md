@@ -1,3 +1,5 @@
+> **旧資料 / Historical reference**: 旧補助インストーラの記録です。本フォークの導入には使用しないでください。These notes describe the predecessor; use the [current README](../../README.md) for this fork.
+
 # netmuxd version compatibility: cause, recovery and verification
 
 [日本語](netmuxd-compatibility.md)

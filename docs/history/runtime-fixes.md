@@ -1,3 +1,5 @@
+> **旧資料 / Historical reference**: 旧補助インストーラの記録です。本フォークの導入には使用しないでください。These notes describe the predecessor; use the [current README](../../README.md) for this fork.
+
 # v0.2.0: 認証情報の維持とWi-Fi復旧
 
 このページは基本プロファイルの説明です。公式netmuxd v0.4.3向けの外部変換・API再登録・15秒チェックは [日本語ガイド](netmuxd-compatibility.md) / [English guide](netmuxd-compatibility.en.md) を参照してください。

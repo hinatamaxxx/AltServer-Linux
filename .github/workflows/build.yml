@@ -1,5 +1,13 @@
 name: Build and test
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the verified v0.1.0 preview assets
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -45,3 +53,22 @@ jobs:
           name: altserver-linux-amd64
           path: dist/*
           if-no-files-found: error
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: [runtime, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: altserver-linux-amd64
+          path: dist
+      - name: Publish preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.1.0 dist/AltServer-x86_64 dist/AltServer-Linux-amd64-setup.tar.gz dist/SHA256SUMS \
+            --target "$GITHUB_SHA" --prerelease --title 'v0.1.0 — Preview / プレビュー' \
+            --notes-file docs/release-v0.1.0.md

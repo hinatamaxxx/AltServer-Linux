@@ -1,3 +1,5 @@
+> **旧資料 / Historical reference**: 旧補助インストーラの記録です。本フォークの導入には使用しないでください。These notes describe the predecessor; use the [current README](../../README.md) for this fork.
+
 # 旧版の既知の問題と設計方針 / Historical Known Issues
 
 2026-09-16: バージョン依存の具体的な原因を通信データで特定しました。[netmuxdの互換性調査](netmuxd-compatibility.md)を参照してください。v0.4.3への単純更新でも解消しません。

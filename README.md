@@ -45,7 +45,7 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 
 ## 検証・ビルド
 
-本フォークは **プレビュー版**です。この版での iPhone 実機への導入・更新、ホスト再起動後の復旧、長時間稼働は未検証です。以前の実機成功例は旧セットアップの結果です。[検証記録](docs/verification.md)。
+本フォークは **プレビュー版**です。この版での iPhone 実機への導入・更新、ホスト再起動後の復旧、長時間稼働は未検証です。以前の実機成功例は旧セットアップの結果です。詳細は[検証記録](docs/verification.md)を参照してください。
 
 ```sh
 git clone --recursive https://github.com/hinatamaxxx/AltServer-Linux.git
@@ -59,6 +59,6 @@ docker build -f docker/Dockerfile.build --target export --output type=local,dest
 
 Apple の認証情報、ペアリング情報、端末識別子、ログ、Anisette の状態をコミットしないでください。設定ファイルは権限 0600 で保存します。セットアップは Apple の認証情報を要求しません。
 
-本体は [AGPL-3.0](LICENSE)、取り込んだ復旧スクリプトは [MIT](LICENSE.autorecover) を維持します。依存ソフトウェアには各々のライセンスが適用されます。[取り込み元](docs/provenance.md)。
+本体は [AGPL-3.0](LICENSE)、取り込んだ復旧スクリプトは [MIT](LICENSE.autorecover) を維持します。依存ソフトウェアには各々のライセンスが適用されます。詳細は[取り込み元](docs/provenance.md)を参照してください。
 
 今回の作業は Codex の **GPT-6 Astra・High（高）**を使用し、このセッションのメタデータで確認しています。日英の校正には **Gemini 3.8 Flash・High（高）**を使用しました。以前の復旧機能は旧プロジェクトの記録どおり GPT-6 Astra・Low（低）を使用しています。AI の利用は実機互換性の検証を意味しません。
