@@ -61,5 +61,25 @@ if sh install.sh --prepare; then
   echo 'Existing installation was not protected' >&2; exit 1
 fi
 test "$before" = "$(sha256sum /etc/altserver-native.env)"
+sh scripts/install-web-ui.sh
+test "$before" = "$(sha256sum /etc/altserver-native.env)"
+test -s /opt/altserver-native/web/static/app.js
+test -s /opt/altserver-native/web/server.py
+/usr/bin/systemd-analyze verify /etc/systemd/system/altserver-webui.service
+python3 /opt/altserver-native/web/server.py --demo --port 18787 >/work/web-ui.log 2>&1 &
+web_pid=$!
+trap 'kill "$web_pid" 2>/dev/null || true' EXIT
+python3 - <<'PY'
+import time, urllib.request
+for attempt in range(30):
+    try:
+        with urllib.request.urlopen('http://127.0.0.1:18787/', timeout=2) as response:
+            assert b'AltServer' in response.read()
+        break
+    except OSError:
+        time.sleep(0.1)
+else:
+    raise AssertionError('Packaged web UI did not start')
+PY
 echo 'Extracted installer: real Debian packages, downloads, checksums, configuration and unit syntax passed.'
 echo 'Service start/stop was simulated; no device or physical-host lifecycle tested.'

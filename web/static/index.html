@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AltServer Console</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<div class="shell">
+  <aside class="sidebar"><a class="brand" href="/"><span class="brand-icon">A</span><span>AltServer<span class="brand-sub">LINUX CONSOLE</span></span></a>
+    <div class="workspace-label">WORKSPACE</div><nav aria-label="メインメニュー"><button class="nav active" data-view="overview"><span>◫</span><span data-i18n="overview">概要</span></button><button class="nav" data-view="logs"><span>≡</span><span data-i18n="logs">診断ログ</span></button></nav>
+    <div class="sidebar-bottom"><span class="small-dot"></span><span data-i18n="privateConsole">プライベート管理画面</span><a href="https://github.com/hinatamaxxx/AltServer-Linux" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>
+  </aside>
+  <main>
+    <header class="topbar"><span class="breadcrumb">AltServer / <span id="crumb">概要</span></span><div class="top-actions"><span id="demo-badge" class="badge amber" hidden>DEMO</span><button id="language" class="quiet" aria-label="Switch language">EN</button><button id="logout" class="quiet" hidden data-i18n="logout">ログアウト</button></div></header>
+    <section id="login" class="login-card" hidden><span class="eyebrow">WELCOME BACK</span><h1 data-i18n="loginTitle">サーバーに接続</h1><p data-i18n="loginHelp">管理用アクセスキーでログインしてください。</p><form id="login-form"><label for="key" data-i18n="accessKey">アクセスキー</label><input id="key" type="password" autocomplete="current-password" required maxlength="128"><button class="primary" type="submit" data-i18n="login">ログイン</button></form><p id="login-error" role="alert"></p><p class="hint" data-i18n="keyHelp">キーはサーバーの /var/lib/altserver-webui/access-key に保存されています。</p><p class="hint" data-i18n="demoHelp">画面のデモを起動した場合のキーは demo です。</p></section>
+    <div id="dashboard" hidden>
+      <div id="connection-error" class="alert" role="alert" hidden data-i18n="offline">サーバーに接続できません。表示は最後に取得した情報です。</div>
+      <section class="page-heading"><div><span class="eyebrow">YOUR HOME SERVER</span><h1 id="page-title">概要</h1><p data-i18n="subtitle">iPhoneの接続と、リフレッシュを支えるサービスをひと目で。</p></div><button id="refresh" class="secondary" data-i18n="refresh">↻ 表示を更新</button></section>
+      <section id="overview-view">
+        <section class="hero"><div><div class="hero-label"><span id="hero-dot" class="status-dot"></span><span data-i18n="systemStatus">システムの状態</span></div><h2 id="hero-title">状態を確認しています</h2><p id="hero-description"></p><div class="hero-meta"><span id="version">—</span><span id="updated">—</span></div></div><div class="hero-art" aria-hidden="true"><div class="orbit"></div><div class="phone"><span></span><div>A</div><i></i></div><span class="signal">✓</span></div></section>
+        <div class="section-heading"><h2 data-i18n="services">サービス</h2><span class="muted" data-i18n="autoRefresh">10秒ごとに表示を更新</span></div><div id="services" class="service-grid"></div>
+        <div class="lower-grid"><section class="panel device-panel"><div class="panel-title"><h2 data-i18n="device">iPhone</h2><span id="device-badge" class="badge">—</span></div><div class="device-summary"><div class="device-icon" aria-hidden="true">▯</div><div><h3 data-i18n="configuredPhone">設定済みのiPhone</h3><p id="device-description">—</p></div></div><div class="panel-note" data-i18n="deviceNote">リフレッシュはiPhoneのAltStore Classicから実行します。</div></section>
+        <section class="panel"><div class="panel-title"><h2 data-i18n="quickActions">診断と復旧</h2><span class="badge neutral" data-i18n="manual">手動操作</span></div><p class="muted" data-i18n="actionHelp">接続に問題があるときに、必要な操作だけを実行できます。</p><div class="action-row"><button id="diagnose" class="primary" data-i18n="diagnose">接続を診断</button><button id="recover" class="secondary" data-i18n="recover">復旧処理を実行</button></div><div id="job-status" class="job-status" role="status" aria-live="polite"></div></section></div>
+        <section class="panel diagnostic-panel"><div class="panel-title"><h2 data-i18n="diagnosticResults">診断結果</h2><span id="diagnostic-time" class="muted" data-i18n="notYet">まだ実行していません</span></div><div id="diagnostics" class="diagnostic-grid"><p class="muted" data-i18n="diagnosticEmpty">「接続を診断」で、通信できるかを個別に確認します。</p></div></section>
+      </section>
+      <section id="logs-view" hidden><section class="panel"><div class="panel-title"><h2 data-i18n="recentActivity">最近の診断・操作</h2><button id="reload-logs" class="secondary" data-i18n="refresh">↻ 表示を更新</button></div><p class="muted" data-i18n="logsHelp">認証情報や端末IDを含まない、管理画面の操作記録です。画面サービスの再起動でリセットされます。</p><div id="events" class="events"></div></section><section class="panel log-summary"><div class="panel-title"><h2 data-i18n="refreshActivity">AltServerの処理記録</h2><span class="muted" data-i18n="logWindow">ログ末尾32 KiBの集計</span></div><div id="counts" class="diagnostic-grid"></div><p class="muted" data-i18n="countsHelp">処理件数の集計です。アプリの起動やリフレッシュの成功を保証するものではありません。</p></section></section>
+      <footer><span>AltServer Linux Console</span><span data-i18n="footer">いつものサーバーを、もう少し使いやすく。</span></footer>
+    </div>
+  </main>
+</div>
+<dialog id="confirm"><form method="dialog"><span class="eyebrow" data-i18n="confirmLabel">操作の確認</span><h2 id="confirm-title"></h2><p data-i18n="restartWarning">実行中のリフレッシュが中断される場合があります。操作後に接続を診断します。</p><div class="action-row"><button value="cancel" class="secondary" data-i18n="cancel">キャンセル</button><button value="proceed" class="primary" data-i18n="execute">実行する</button></div></form></dialog>
+</body></html>

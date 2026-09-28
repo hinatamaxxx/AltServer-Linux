@@ -37,6 +37,16 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 
 **既存環境があれば変更せず停止します。** [セットアップ・移行](docs/setup.md)を参照してください。
 
+## Web管理画面（オプション）
+
+サービス状態・iPhone接続・診断ログ・復旧操作をまとめた、日本語／英語の画面を追加できます。
+
+```sh
+sudo sh scripts/install-web-ui.sh
+```
+
+AltServerの設定後に実行してください。初期設定はループバック接続・アクセスキー認証です。リモート利用にはTailscaleまたはSSHポート転送を使います。[導入・使い方](docs/web-ui.md)
+
 ## 主な修正
 
 - v0.2.0: C++ 基盤と端末通信ライブラリの参照先を公式リポジトリへ変更。公式 Windows の 1.7.5 開発ソースに含まれる認証処理を取り込み、2FA の HTTP エラー判定・認証ログ・未知のエラーコード処理を修正しました。アドレス互換処理は入力部分に集約しています。版番号は `VERSION` で一元管理し、`--version` で確認できます。[保守手順](docs/maintenance.md)も追加しました。

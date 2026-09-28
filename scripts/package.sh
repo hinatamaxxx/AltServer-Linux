@@ -7,7 +7,7 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 bundle="$stage/AltServer-Linux"
 mkdir -p "$bundle/dist"
-cp -R install.sh scripts config docs VERSION LICENSE LICENSE.autorecover README.md README.en.md "$bundle/"
+cp -R install.sh scripts config docs web VERSION LICENSE LICENSE.autorecover README.md README.en.md "$bundle/"
 cp dist/AltServer-x86_64 "$bundle/dist/"
 mkdir -p "$bundle/licenses"
 for library in libimobiledevice libusbmuxd libplist libimobiledevice-glue; do

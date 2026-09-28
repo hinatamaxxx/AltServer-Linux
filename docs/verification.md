@@ -1,5 +1,17 @@
 # 検証記録 / Verification
 
+## v0.3.0 — Web UI
+
+既存Debianサーバーへ管理画面のみを追加し、5サービスの状態、設定済みiPhoneの検出、Anisette・netmuxd通信・AltServer・iPhone接続の4診断を確認しました。追加前後で既存環境ファイルとAltServerバイナリのSHA-256が一致しました。画面のバージョン表示は実際に稼働しているAltServerを示します。
+
+ブラウザーでは、架空データによるログイン、接続診断、復旧確認のキャンセル、診断ログ、日英切り替え、390px幅の表示を確認しました。実環境のサービスを意図的に停止する障害注入、ホスト再起動、長時間稼働はこの版では未検証です。
+
+The console was added to an existing Debian host. Checks confirmed five service states, detection of the configured iPhone, and four diagnostics: Anisette, netmuxd transport, AltServer and iPhone connectivity. SHA-256 hashes of the existing environment file and AltServer binary were unchanged. The UI version label reflects the AltServer binary actually running on the host.
+
+Browser checks with synthetic data covered login, diagnostics, cancelling recovery confirmation, diagnostic logs, Japanese/English switching and a 390px viewport. Intentional service-failure injection on the live host, full-host reboot and long-duration operation were not tested for this release.
+
+Seven HTTP/backend regression tests cover authentication, session expiry/logout, Origin/Host/CSRF checks, allowed operations, concurrent-operation rejection, login throttling, static-file boundaries, sensitive-output filtering and command/probe failure reporting. The extracted-bundle test also installs the optional console and starts its packaged demo.
+
 ## v0.2.1 — 実機確認 / Hardware verification
 
 2026-09-29（JST）、既存のDebianサーバー、公式netmuxd v0.4.3への直接接続、iOS 27.0、AltStore Classic 2.3で手動リフレッシュを確認しました。旧アドレス変換アダプターは停止した状態です。v0.2.0では証明書が変わらないまま、4件の既存プロファイルをすべて削除してから登録し直した後に、信頼切れが再発しました。v0.2.1では4件の登録が4件の削除に先行し、利用者が再度の信頼操作なしでアプリを開けたと確認しました。1台・手動更新での結果です。新規セットアップ、ホスト再起動後の復旧、長時間稼働は未検証です。

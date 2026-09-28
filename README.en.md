@@ -37,6 +37,16 @@ Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release a
 
 **Setup stops without changing an existing installation.** See [setup and migration](docs/setup.md).
 
+## Optional web console
+
+Add a Japanese/English dashboard for service status, iPhone connectivity, diagnostic logs and recovery controls:
+
+```sh
+sudo sh scripts/install-web-ui.sh
+```
+
+Requires a configured AltServer host. Defaults to loopback access with a private access key; use Tailscale or SSH forwarding for remote access. See [Web UI setup and usage](docs/web-ui.md).
+
 ## Changes
 
 - v0.2.0: Move the C++ base and device libraries to official repositories. Adopt authentication code from the official Windows 1.7.5 development source, with fixes for 2FA HTTP errors, authentication logging and unknown error codes. Address compatibility is handled at the input boundary. `VERSION` is the shared version source, exposed by `--version`. See the new [maintenance guide](docs/maintenance.md).

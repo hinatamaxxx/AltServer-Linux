@@ -1,0 +1,26 @@
+[Unit]
+Description=AltServer private web console
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/altserver-webui.env
+ExecStart=/usr/bin/python3 /opt/altserver-native/web/server.py --listen ${WEBUI_LISTEN} --port ${WEBUI_PORT}
+User=root
+UMask=0077
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/altserver-webui
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target
