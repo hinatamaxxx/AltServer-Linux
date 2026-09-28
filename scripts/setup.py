@@ -18,7 +18,9 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 HOME = Path('/opt/altserver-native')
 ENV = Path('/etc/altserver-native.env')
-TAG = 'v0.1.3'
+TAG = (ROOT / 'VERSION').read_text().strip()
+if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', TAG):
+    raise ValueError('Invalid setup VERSION')
 RELEASE = f'https://github.com/hinatamaxxx/AltServer-Linux/releases/download/{TAG}'
 NETMUX_URL = ('https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/'
               'netmuxd-x86_64-unknown-linux-gnu.tar.gz')

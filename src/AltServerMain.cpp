@@ -2,6 +2,7 @@
 // compile with: /D_UNICODE /DUNICODE /DWIN32 /D_WINDOWS /c
 
 #include "common.h"
+#include "BuildVersion.h"
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
@@ -77,6 +78,7 @@ void print_help() {
 	printf("Usage:  AltServer-Linux options [ ipa-file ]\n");
 	printf(
 			"  -h  --help             Display this usage information.\n"
+			"  -v  --version          Display this fork's version.\n"
 			"  -u  --udid UDID        Device's UDID, only needed when installing IPA.\n"
 			"  -a  --appleID AppleID  Apple ID to sign the ipa, only needed when installing IPA.\n"
 			"  -p  --password passwd  Password of Apple ID, only needed when installing IPA.\n"
@@ -93,6 +95,7 @@ int main(int argc, char *argv[]) {
 	static struct option long_options[] =
         {
           {"help",             no_argument,        0, 'h'},
+          {"version",          no_argument,        0, 'v'},
           {"udid",		required_argument,   	0, 'u'},
           {"appleID",	required_argument,      0, 'a'},
           {"password",	required_argument,      0, 'p'},
@@ -115,11 +118,14 @@ int main(int argc, char *argv[]) {
 		int this_option_optind = optind ? optind : 1;
 		int option_index = 0;
 
-		int c = getopt_long (argc, argv, "hu:i:a:p:P:d",
+		int c = getopt_long (argc, argv, "hvu:i:a:p:P:d",
 						long_options, &option_index);
 		if (c == -1) break;
 
 		switch (c) {
+        case 'v':
+            printf("AltServer-Linux %s\n", ALTSERVER_VERSION);
+            return 0;
         case 'u':
 			udid = optarg;
             break;

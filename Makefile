@@ -54,6 +54,7 @@ include $(ROOT_DIR)/makefiles/dnssd_loader-build/dnssd_loader-files.mak
 #INC_CFLAGS := -Ilibraries
 INC_CFLAGS += $(libimobiledevice_include)
 INC_CFLAGS += -I$(LIB_DIR)
+INC_CFLAGS += -I$(BUILD_DIR)
 INC_CFLAGS += $(libplist_include)
 INC_CFLAGS += $(altsign_include)
 INC_CFLAGS += $(dnssd_loader_include)
@@ -115,6 +116,11 @@ main_newsrc := $(main_orisrc:$(main_srcroot)/%=$(main_patched_root)/%)
 main_objs = $(main_newsrc:$(BUILD_DIR)/%=$(BUILD_DIR)/objs/%.o) $(main_override_src:$(ROOT_DIR)/%=$(BUILD_DIR)/objs/%.o) $(shim_src:$(MAIN_DIR)/%=$(BUILD_DIR)/objs/%.o)
 
 $(main_objs) : lib_AltSign lib_libimobiledevice lib_dnssd_loader
+
+$(BUILD_DIR)/BuildVersion.h: $(ROOT_DIR)/VERSION $(ROOT_DIR)/tools/build-version.py
+	python3 $(ROOT_DIR)/tools/build-version.py > $@
+
+$(BUILD_DIR)/objs/src/AltServerMain.cpp.o: $(BUILD_DIR)/BuildVersion.h
 
 $(main_objs) : EXTRA_FLAGS := -I$(main_patched_root) -I$(ROOT_DIR)/src -fpermissive -include "common.h" $(INC_CFLAGS)
 

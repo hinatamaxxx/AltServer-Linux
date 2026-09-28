@@ -5,7 +5,10 @@ import subprocess
 import sys
 
 binary = str(Path(sys.argv[1]).resolve())
+version = (Path(__file__).resolve().parents[1] / 'VERSION').read_text().strip()
 for args, expected, message in [
+    (['--version'], 0, 'AltServer-Linux ' + version),
+    (['-v'], 0, 'AltServer-Linux ' + version),
     (['--help'], 0, 'Usage:'),
     (['-h'], 0, 'Usage:'),
     (['--unknown-option'], 1, 'Usage:'),
@@ -16,4 +19,4 @@ for args, expected, message in [
     result = subprocess.run([binary, *args], capture_output=True, text=True, timeout=15)
     assert result.returncode == expected, (args, result.returncode, result.stderr)
     assert message in result.stdout + result.stderr, (args, result.stdout, result.stderr)
-print('6 executable CLI regression cases passed')
+print('8 executable CLI regression cases passed')
