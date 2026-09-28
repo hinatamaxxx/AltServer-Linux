@@ -1,73 +1,64 @@
-# AltServer-Linux
-AltServer for AltStore, but on-device
+# AltServer-Linux — 自動復旧・簡単セットアップ
 
-## Usage
+日本語 | [English](README.en.md)
 
-- Install IPA: `./AltServer -u [UDID] -a [AppleID account] -p [AppleID password] [ipaPath.ipa]`
-- Running as AltServer Daemon: `./AltServer`
-- Full usage (maybe outdated, refer to `./AltServer -h` for the newest):
-```
-Usage:  AltServer-Linux options [ ipa-file ]
-  -h  --help             Display this usage information.
-  -u  --udid UDID        Device's UDID, only needed when installing IPA.
-  -a  --appleID AppleID  Apple ID to sign the ipa, only needed when installing IPA.
-  -p  --password passwd  Password of Apple ID, only needed when installing IPA.
-  -d  --debug            Print debug output, can be used several times to increase debug level.
+[NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux) のフォークです。本体の不具合修正と、[altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover) の復旧機能をまとめています。
 
-The following environment var can be set for some special situation:
-  - ALTSERVER_ANISETTE_SERVER: Set to custom anisette server URL
-          if not set, the default one: https://armconverter.com/anisette/irGb3Quww8zrhgqnzmrx, is used
-  - ALTSERVER_NO_SUBSCRIBE: (*unused*) Please enable this for usbmuxd server that do not correctly usbmuxd_listen interfaces
+AltServer、公式 netmuxd v0.4.3、互換アダプター、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上で動作し、systemd が起動と監視を担当します。
+
+## 簡単な導入
+
+対象は **Debian 12/13・amd64・systemd 環境**です。amd64 以外の CPU アーキテクチャや Docker Desktop はこのインストーラの対象外です。インターネット接続が必要です。Debian 12 とクリーンな実機への新規導入は未検証です。
+
+```sh
+git clone https://github.com/hinatamaxxx/AltServer-Linux.git
+cd AltServer-Linux
+sudo sh install.sh --prepare
 ```
 
-## Download
+**準備には iPhone も Apple アカウントも不要です。AltServer はまだ有効化しません。** 依存環境とチェックサム検証済みバイナリを導入し、取得した Anisette イメージをダイジェストで固定します。引数なしでも準備のみを実行します。
 
-- Precompiled static binary can be downloaded in Release ( also have a look at pre-release ;) )
-- Nightly version is available as Github Actions artifacts
+準備完了後、iPhone を1台だけ USB 接続し、ペアリング・「信頼」を完了してから有効化します。
 
-## TODO / Special Features
-- [x] Track upstream (AltServer-Windows) develop branch (i.e. Beta version)
-- [x] Support Offline Anisette Data Generation (i.e. without Sideloadly)
-  - Finsihed, please run [alt_anisette_server](https://hub.docker.com/r/nyamisty/alt_anisette_server) & use `ALTSERVER_ANISETTE_SERVER` to specify custom server URL
-- [x] Support Wi-Fi Refresh
-  - [netmuxd](https://github.com/jkcoxson/netmuxd) now supports network devices (needs version > v0.1.1, be sure to check pre-release)
-    - Download `netmuxd`, stop the original `usbmuxd`, and run `netmuxd` before running `AltServer-Linux`
-    - ~If netmuxd does not work, please try using special env var `ALTSERVER_NO_SUBSCRIBE`. Enabling this would disable **auto-refresh when plugged-in** of USB devices~
+```sh
+sudo sh install.sh --configure
+sudo /usr/local/sbin/altserver-native-healthcheck
+```
 
-----
+ペアリング情報がない場合は、iPhone のロックを解除して `idevicepair pair` を実行し、「信頼」に応答してから再度 `sudo sh install.sh --configure` を実行してください。Wi-Fi 更新には、同一 LAN 上で通信できる iPhone とサーバー、および有効なペアリング情報が必要です。Tailscale は遠隔管理用で、Bonjour 探索や USB の信頼操作を代替しません。
 
-## Advanced: Build Instruction (check Github Actions if you cannot build)
+リリースの **AltServer-Linux-amd64-setup.tar.gz** を展開して、同じコマンドを実行する方法もあります。本フォークのバイナリと設定用ファイルを同梱します。Debian パッケージ、netmuxd、Anisette は準備時に取得するため、オフライン用ではありません。
 
-- Preparation: `git clone --recursive https://github.com/NyaMisty/AltServer-Linux`
+**既存環境があれば変更せず停止します。** [セットアップ・移行](docs/setup.md)を参照してください。
 
-- Install dependencies (see notes below): corecrypto_static, cpprestsdk static lib, boost static lib
+## 主な修正
 
-- Build:
-  ```
-  cd AltServer-Linux
-  mkdir build
-  make -f ../Makefile -j3
-  ls AltServer-*
-  ```
+- Anisette の日時をホストのタイムゾーンに依存せず UTC として解釈。日付と64ビット routing info を検証。
+- Anisette 応答値のデバッグ出力を除去。HTTP 要求に15秒の制限を設定。
+- `-h` / `--help`、IPA 導入時の引数不足、`-a` から `-p` への処理の流れ込み、読めない IPA、失敗時の終了コードを修正。
+- USB 通信のゼロバイト転送や不正サイズを検出し、無限ループを防止。
+- Anisette の端末 ID と認証状態をコンテナの置き換え時も保持。
+- netmuxd 本体を改造せずアドレス形式を変換し、公式 API で設定済み iPhone を再登録。
+- アダプターと netmuxd の障害を区別して復旧。iPhone 不在時もサービスを確認。
 
-- My own build note for you 
-  ```
-    1. Run alpine docker (change --platform to corresponding architecture you want): 
-        docker run --platform=linux/arm/v7 --name altserver-builder-alpine-armv7 -it alpine:3.15 
-    2. Install dependencies:
-        apk add zsh git curl wget g++ clang boost-static ninja boost-dev cmake make sudo bash vim libressl-dev util-linux-dev zlib-dev zlib-static
-    3. Install corecrypto
-        download corecrypto from apple website, unzip corecrypto.zip; cd corecrypto; mkdir build; cd build; CC=clang CXX=clang++ cmake ..;
-        vim CMakeFiles/Makefile2, delete line starts with "all: corecrypto_perf/....." and "all: corecrypto_test/.....", then make; make install
-    4. Install cpprestsdk
-        git clone --recursive https://github.com/microsoft/cpprestsdk; cd cpprestsdk; mkdir build; cmake -DBUILD_SHARED_LIBS=0 ..; make; make install
-	    (if you're compiling for armv7, you have to grep -Wcast-align, and remove it, or the compiling would fail)
-    5. Install libzip
-        git clone https://github.com/nih-at/libzip; cd libzip; mkdir build; cd build; cmake -DBUILD_SHARED_LIBS=0 ..; make; make install
-    6. Compile AltServer-Linux
-        git clone --recursive https://github.com/NyaMisty/AltServer-Linux
-        cd AltServer-Linux
-        make -f ../Makefile -j3
-	    (if you're compiling for ARM, i.e. armv7 or aarch64, you'll have to remove the -mno-default flag in Makefile)
+復旧は3回連続失敗後に行い、サービス再起動は5分間の間隔を確保します。確認の終了から15秒後に次の確認を開始します。`healthy` はサーバー・プロトコルの確認結果で、アプリ更新の成功を保証するものではありません。iPhone が不在なら `waiting_for_device` が通常の待機状態です。自動確認は Apple へのログインやアプリ更新を行いません。
 
-  ```
+## 検証・ビルド
+
+本フォークは **プレビュー版**です。この版での iPhone 実機への導入・更新、ホスト再起動後の復旧、長時間稼働は未検証です。以前の実機成功例は旧セットアップの結果です。[検証記録](docs/verification.md)。
+
+```sh
+git clone --recursive https://github.com/hinatamaxxx/AltServer-Linux.git
+cd AltServer-Linux
+docker build -f docker/Dockerfile.build --target export --output type=local,dest=dist .
+```
+
+上流の amd64 ビルド環境で本フォークのソースと固定されたサブモジュールをビルドします。通常のインストールにはビルド環境は不要です。[上流の説明](docs/upstream-readme.md)も参考用に残しています。
+
+## 個人情報・ライセンス・AI の利用
+
+Apple の認証情報、ペアリング情報、端末識別子、ログ、Anisette の状態をコミットしないでください。設定ファイルは権限 0600 で保存します。セットアップは Apple の認証情報を要求しません。
+
+本体は [AGPL-3.0](LICENSE)、取り込んだ復旧スクリプトは [MIT](LICENSE.autorecover) を維持します。依存ソフトウェアには各々のライセンスが適用されます。[取り込み元](docs/provenance.md)。
+
+今回の作業は Codex の **GPT-6 Astra・High（高）**を使用し、このセッションのメタデータで確認しています。日英の校正には **Gemini 3.8 Flash・High（高）**を使用しました。以前の復旧機能は旧プロジェクトの記録どおり GPT-6 Astra・Low（低）を使用しています。AI の利用は実機互換性の検証を意味しません。

@@ -28,7 +28,7 @@ pplx::task<void> WiredConnection::SendData(std::vector<unsigned char>& data)
 		while (data.size() > 0)
 		{
 			uint32_t sentBytes = 0;
-			if (idevice_connection_send(this->connection(), (const char*)data.data(), (int32_t)data.size(), &sentBytes) != IDEVICE_E_SUCCESS)
+			if (idevice_connection_send(this->connection(), (const char*)data.data(), (int32_t)data.size(), &sentBytes) != IDEVICE_E_SUCCESS || sentBytes == 0 || sentBytes > data.size())
 			{
 				throw ServerError(ServerErrorCode::LostConnection);
 			}
@@ -41,6 +41,7 @@ pplx::task<void> WiredConnection::SendData(std::vector<unsigned char>& data)
 pplx::task<std::vector<unsigned char>> WiredConnection::ReceiveData(int expectedSize)
 {
 	return pplx::create_task([=]() -> std::vector<unsigned char> {
+		if (expectedSize < 0) throw ServerError(ServerErrorCode::LostConnection);
 		char bytes[4096];
 
 		std::vector<unsigned char> receivedData;
@@ -52,7 +53,7 @@ pplx::task<std::vector<unsigned char>> WiredConnection::ReceiveData(int expected
 
 			uint32_t receivedBytes = 0;
 			idevice_error_t result = idevice_connection_receive_timeout(this->connection(), bytes, size, &receivedBytes, 0);
-			if (result != IDEVICE_E_SUCCESS)
+			if (result != IDEVICE_E_SUCCESS || receivedBytes == 0 || receivedBytes > size)
 			{
 				throw ServerError(ServerErrorCode::LostConnection);
 			}

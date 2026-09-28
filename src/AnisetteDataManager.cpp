@@ -10,6 +10,7 @@
 
 #include "AnisetteData.h"
 #include "AltServerApp.h"
+#include "AnisetteValidation.h"
 
 #define odslog(msg) { std::stringstream ss; ss << msg << std::endl; OutputDebugStringA(ss.str().c_str()); }
 
@@ -68,7 +69,9 @@ std::shared_ptr<AnisetteData> AnisetteDataManager::FetchAnisetteData()
 	// http_request request(methods::GET);
 	// request.set_request_uri(builder.to_string());
 
-	auto client = web::http::client::http_client(GetAnisetteURL());
+	http_client_config config;
+	config.set_timeout(std::chrono::seconds(15));
+	auto client = web::http::client::http_client(GetAnisetteURL(), config);
 	http_request request(methods::GET);
 	
 	std::map<utility::string_t, utility::string_t> headers = {
@@ -90,6 +93,8 @@ std::shared_ptr<AnisetteData> AnisetteDataManager::FetchAnisetteData()
 	auto task = client.request(request)
 		.then([=](http_response response)
 			{
+				if (response.status_code() != status_codes::OK)
+					throw ServerError(ServerErrorCode::InvalidAnisetteData);
 				return response.content_ready();
 			})
 		.then([=](http_response response)
@@ -101,7 +106,6 @@ std::shared_ptr<AnisetteData> AnisetteDataManager::FetchAnisetteData()
 			{
 				odslog("parse anisette data ret");
 				json::value jsonVal = previousTask.get();
-				odslog("Got anisetteData json: " << jsonVal);
 				std::vector<std::string> keys = {
 					"X-Apple-I-MD-M",
 					"X-Apple-I-MD",
@@ -115,14 +119,12 @@ std::shared_ptr<AnisetteData> AnisetteDataManager::FetchAnisetteData()
 					"X-Apple-I-TimeZone"
 				};
 				for (auto &key : keys) {
-					odslog(key << ": " << jsonVal.at(key).as_string().c_str());
+					if (!jsonVal.has_string_field(key) || jsonVal.at(key).as_string().empty())
+						throw ServerError(ServerErrorCode::InvalidAnisetteData);
 				}
 
-				struct tm tm = { 0 };
-				strptime(jsonVal.at("X-Apple-I-Client-Time").as_string().c_str(), "%Y-%m-%dT%H:%M:%SZ", &tm);
-				unsigned long ts = mktime(&tm);
 				struct timeval tv = { 0 };
-				tv.tv_sec = ts;
+				tv.tv_sec = anisette::utcTimestamp(jsonVal.at("X-Apple-I-Client-Time").as_string());
 				tv.tv_usec = 0;
 
 				odslog("Building anisetteData obj...");
@@ -130,7 +132,7 @@ std::shared_ptr<AnisetteData> AnisetteDataManager::FetchAnisetteData()
 					jsonVal.at("X-Apple-I-MD-M").as_string(),
 					jsonVal.at("X-Apple-I-MD").as_string(),
 					jsonVal.at("X-Apple-I-MD-LU").as_string(),
-					std::atoi(jsonVal.at("X-Apple-I-MD-RINFO").as_string().c_str()),
+					anisette::routingInfo(jsonVal.at("X-Apple-I-MD-RINFO").as_string()),
 					jsonVal.at("X-Mme-Device-Id").as_string(),
 					jsonVal.at("X-Apple-I-SRL-NO").as_string(),
 					jsonVal.at("X-MMe-Client-Info").as_string(),
@@ -143,7 +145,6 @@ std::shared_ptr<AnisetteData> AnisetteDataManager::FetchAnisetteData()
 	
 	task.wait();
 
-	odslog(*anisetteData);
 
 	return anisetteData;
 }

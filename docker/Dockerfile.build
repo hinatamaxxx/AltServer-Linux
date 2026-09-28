@@ -1,0 +1,12 @@
+# Existing upstream toolchain includes corecrypto, cpprestsdk and static libraries.
+# The source and all submodules come from this checkout, not a release binary.
+FROM ghcr.io/nyamisty/altserver_builder_alpine_amd64:latest AS build
+WORKDIR /workdir
+COPY . .
+RUN test -f upstream_repo/AltServer/AltServerApp.cpp \
+    && mkdir -p build \
+    && cd build \
+    && make -f ../Makefile -j2
+
+FROM scratch AS export
+COPY --from=build /workdir/build/AltServer-x86_64 /AltServer-x86_64

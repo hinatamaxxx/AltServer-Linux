@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+set -a
+. "${ENV_FILE:-/etc/altserver-native.env}"
+set +a
+probe="${ALTSERVER_PROBE:-/usr/local/sbin/altserver-native-probe}"
+hosts="${AVAHI_HOSTS_FILE:-/etc/avahi/hosts}"
+tmp=""
+trap 'if [ -n "$tmp" ]; then rm -f "$tmp"; fi' EXIT
+trap 'exit 0' TERM INT
+
+while :; do
+  if ipaddr="$("$probe" discover)"; then
+    previous="$(awk '$2 == "iphone-alt.local" {print $1}' "$hosts" 2>/dev/null || true)"
+    if [ "$previous" != "$ipaddr" ]; then
+      tmp="$(mktemp)"
+      awk '$2 != "iphone-alt.local"' "$hosts" >"$tmp" 2>/dev/null || true
+      printf '%s iphone-alt.local\n' "$ipaddr" >>"$tmp"
+      cat "$tmp" >"$hosts"
+      rm -f "$tmp"
+      tmp=""
+      # Reload only when the verified address changes. Never restart Avahi.
+      systemctl reload avahi-daemon.service
+    fi
+  fi
+  sleep 60 &
+  wait $! || true
+done

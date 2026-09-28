@@ -1,0 +1,8 @@
+.git
+**/.git
+build
+dist
+**/__pycache__
+*.log
+.env
+*.local.env

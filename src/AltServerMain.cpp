@@ -92,6 +92,7 @@ void print_help() {
 int main(int argc, char *argv[]) {
 	static struct option long_options[] =
         {
+          {"help",             no_argument,        0, 'h'},
           {"udid",		required_argument,   	0, 'u'},
           {"appleID",	required_argument,      0, 'a'},
           {"password",	required_argument,      0, 'p'},
@@ -101,11 +102,11 @@ int main(int argc, char *argv[]) {
           {0, 0, 0, 0}
         };
 	
-	char *udid;
-	char *ipaddr;
-	char *appleID;
-	char *password;
-	char *pairDataFile;
+	char *udid = nullptr;
+	char *ipaddr = nullptr;
+	char *appleID = nullptr;
+	char *password = nullptr;
+	char *pairDataFile = nullptr;
 	
 	char *ipaPath = NULL;
 	int debugLogLevel = 0;
@@ -114,7 +115,7 @@ int main(int argc, char *argv[]) {
 		int this_option_optind = optind ? optind : 1;
 		int option_index = 0;
 
-		int c = getopt_long (argc, argv, "u:i:a:p:P:d",
+		int c = getopt_long (argc, argv, "hu:i:a:p:P:d",
 						long_options, &option_index);
 		if (c == -1) break;
 
@@ -127,6 +128,7 @@ int main(int argc, char *argv[]) {
 			break;
         case 'a':
 			appleID = optarg;
+			break;
         case 'p':
             password = optarg;
 			break;
@@ -179,6 +181,14 @@ int main(int argc, char *argv[]) {
 	signal(SIGPIPE, SIG_IGN);
 
 	if (installApp) {
+		if (!udid || !*udid || !appleID || !*appleID || !password || !*password) {
+			fprintf(stderr, "Installing an IPA requires -u, -a and -p.\n");
+			return 1;
+		}
+		if (!std::ifstream(ipaPath, std::ios::binary).good()) {
+			fprintf(stderr, "Cannot read the IPA file.\n");
+			return 1;
+		}
 		odslog("Installing app...");
 		std::shared_ptr<Device> _selectedDevice = std::make_shared<Device>("unknown", udid, Device::Type::All);;
 		std::optional<std::string> _ipaFilepath = std::make_optional<std::string>(ipaPath);
@@ -190,11 +200,13 @@ int main(int argc, char *argv[]) {
 		catch (Error& error)
 		{
 			odslog("Error: " << error.domain() << " (" << error.code() << ").")
+			return 1;
 		}
 		catch (std::exception& exception)
 		{
 			odslog("Exception: " << exception.what());
 			odslog(boost::stacktrace::stacktrace());
+			return 1;
 		}
 
 		odslog("Finished!");
