@@ -8,6 +8,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 -m unittest discover -s tests -v
+      - run: node tools/privacy-scan.js .
       - name: C++ regression tests
         run: |
           g++ -std=c++17 -Wall -Wextra -Werror -Isrc tests/anisette_validation.cpp -o /tmp/test-anisette

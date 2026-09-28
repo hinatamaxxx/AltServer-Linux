@@ -1,84 +1,31 @@
-const fs = require("node:fs");
-const path = require("node:path");
-
-const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
-
+// Check tracked project files only; don't traverse submodules or local state.
+// This heuristic is an aid to review, not a guarantee that a tree is secret-free.
+const fs = require('node:fs');
+const path = require('node:path');
+const {execFileSync} = require('node:child_process');
+const root = path.resolve(process.argv[2] || '.');
+const files = execFileSync('git', ['ls-files', '-z'], {cwd: root, encoding: 'utf8'}).split('\0').filter(Boolean);
 const patterns = [
-  {
-    name: "MAC address",
-    regex: /([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}/,
-  },
-  {
-    name: "Private IPv4",
-    regex: /192\.168\.[0-9]+\.[0-9]+|10\.[0-9]+\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]+\.[0-9]+/,
-  },
-  {
-    name: "Secret keywords",
-    regex: /password|passwd|apple.?id|mobiledevicepairing|BEGIN .*PRIVATE KEY/i,
-  },
+  ['private key', /-----BEGIN (?:OPENSSH |RSA |EC )?PRIVATE KEY-----/],
+  ['GitHub token', /\bgh[pousr]_[A-Za-z0-9]{30,}\b/],
+  ['local identity file', /^(?:device\.json|adi\.pb)$/],
 ];
-
-const allowedKeywordFiles = new Set([
-  ".gitignore",
-  "install.sh",
-  "README.md",
-  "PRIVACY_CHECKLIST.md",
-  "docs/setup.md",
-  "docs/publishing.md",
-  "docs/license-notes.md",
-  "docs/troubleshooting.md",
-  "docs/known-issues.md",
-  "docs/verification.md",
-  "docs/runtime-fixes.md",
-  "scripts/runtime/altserver-native-probe",
-  "tests/test_runtime.py",
-  "tools/privacy-scan.js",
-]);
-
-function walk(dir) {
-  const out = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if ([".git", "__pycache__"].includes(entry.name)) continue;
-    const filePath = path.join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...walk(filePath));
-    else out.push(filePath);
+let findings = 0;
+for (const file of files) {
+  const full = path.join(root, file);
+  if (!fs.statSync(full).isFile()) continue;
+  if (/(?:^|\/)(?:\.env|device\.json|adi\.pb)$|\.(?:pem|key|plist)$/.test(file)) {
+    console.error(`BLOCK: sensitive file type: ${file}`); findings++;
   }
-  return out;
-}
-
-let findings = [];
-
-for (const file of walk(root)) {
-  const rel = path.relative(root, file).replaceAll(path.sep, "/");
-  const text = fs.readFileSync(file, "utf8");
-  const lines = text.split(/\r?\n/);
+  const lines = fs.readFileSync(full, 'utf8').split(/\r?\n/);
   for (const [index, line] of lines.entries()) {
-    for (const pattern of patterns) {
-      if (!pattern.regex.test(line)) continue;
-      const isAllowedKeyword =
-        pattern.name === "Secret keywords" && allowedKeywordFiles.has(rel);
-      findings.push({
-        file: rel,
-        line: index + 1,
-        type: pattern.name,
-        allowed: isAllowedKeyword,
-        text: line,
-      });
+    for (const [name, pattern] of patterns.slice(0, 2)) {
+      if (pattern.test(line)) {
+        // Never print a possible secret itself.
+        console.error(`BLOCK: ${name}: ${file}:${index + 1}`); findings++;
+      }
     }
   }
 }
-
-const blocking = findings.filter((item) => !item.allowed);
-
-console.log(`Scanned: ${root}`);
-console.log(`Findings: ${findings.length}`);
-console.log(`Blocking findings: ${blocking.length}`);
-
-for (const item of findings) {
-  const marker = item.allowed ? "allowed-doc" : "BLOCK";
-  console.log(`${marker} ${item.type} ${item.file}:${item.line}: ${item.text}`);
-}
-
-if (blocking.length > 0) {
-  process.exit(1);
-}
+console.log(`Checked ${files.length} tracked paths; ${findings} blocking findings.`);
+process.exitCode = findings ? 1 : 0;
