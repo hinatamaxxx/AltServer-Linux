@@ -48,6 +48,12 @@ def verify(path, digest):
         raise ValueError(f'Checksum mismatch: {path.name}')
 
 
+def verify_binary_version(path):
+    actual = subprocess.check_output([str(path), '--version'], text=True, timeout=15).strip()
+    if actual != f'AltServer-Linux {TAG}':
+        raise ValueError('AltServer binary version does not match this setup')
+
+
 def atomic_write(path, content, mode=0o600):
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(dir=path.parent, prefix='.' + path.name)
@@ -136,6 +142,7 @@ def prepare():
         for binary in (alt, stage / 'netmuxd'):
             binary.chmod(0o755)
             run(str(binary), '--help', stdout=subprocess.DEVNULL, timeout=15)
+        verify_binary_version(alt)
         run('docker', 'pull', ANISETTE_IMAGE)
         # Record the immutable digest actually pulled; later starts never track latest.
         image = json.loads(output('docker', 'image', 'inspect', ANISETTE_IMAGE))[0]

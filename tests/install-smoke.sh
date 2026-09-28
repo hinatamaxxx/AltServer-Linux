@@ -21,6 +21,7 @@ sh install.sh --prepare
 test ! -e /etc/altserver-native.env
 test ! -e /etc/systemd/system/altserver-native.service
 test -x /opt/altserver-native/bin/AltServer
+test "$(/opt/altserver-native/bin/AltServer --version)" = "AltServer-Linux $(cat VERSION)"
 test -x /opt/altserver-native/bin/netmuxd
 ! grep -q altserver /work/systemctl-calls
 # Only synthetic device identity/pairing file; no iPhone is contacted.

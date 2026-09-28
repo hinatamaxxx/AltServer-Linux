@@ -14,6 +14,14 @@ spec.loader.exec_module(setup)
 
 
 class SetupTests(unittest.TestCase):
+    def test_binary_version_must_match_setup(self):
+        with patch.object(setup.subprocess, 'check_output', return_value=f'AltServer-Linux {setup.TAG}\n'):
+            setup.verify_binary_version(Path('fixture'))
+        for actual in ('AltServer-Linux v0.1.3', 'Usage: AltServer', ''):
+            with patch.object(setup.subprocess, 'check_output', return_value=actual):
+                with self.assertRaises(ValueError):
+                    setup.verify_binary_version(Path('fixture'))
+
     def test_interrupted_configuration_can_resume_without_device_detection(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

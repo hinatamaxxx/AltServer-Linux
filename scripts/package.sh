@@ -9,6 +9,11 @@ bundle="$stage/AltServer-Linux"
 mkdir -p "$bundle/dist"
 cp -R install.sh scripts config docs VERSION LICENSE LICENSE.autorecover README.md README.en.md "$bundle/"
 cp dist/AltServer-x86_64 "$bundle/dist/"
+mkdir -p "$bundle/licenses"
+for library in libimobiledevice libusbmuxd libplist libimobiledevice-glue; do
+    mkdir -p "$bundle/licenses/$library"
+    cp "libraries/$library/"COPYING* "$bundle/licenses/$library/"
+done
 (cd "$bundle/dist" && sha256sum AltServer-x86_64 >SHA256SUMS)
 tar -C "$stage" -czf dist/AltServer-Linux-amd64-setup.tar.gz AltServer-Linux
 (cd dist && sha256sum AltServer-x86_64 AltServer-Linux-amd64-setup.tar.gz >SHA256SUMS)
