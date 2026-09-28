@@ -15,6 +15,7 @@ import shlex
 import subprocess
 import threading
 import time
+from urllib.parse import urlsplit
 
 UNITS = {
     'altserver': 'altserver-native.service',
@@ -23,7 +24,7 @@ UNITS = {
     'discovery': 'iphone-mobdev-service.service',
     'health': 'altserver-native-healthcheck.timer',
 }
-STATIC = {'/': ('index.html', 'text/html; charset=utf-8'),
+STATIC = {'/passkeys.js': ('passkeys.js', 'text/javascript; charset=utf-8'), '/': ('index.html', 'text/html; charset=utf-8'),
           '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
           '/style.css': ('style.css', 'text/css; charset=utf-8')}
 
@@ -174,9 +175,11 @@ class Backend:
 class Server(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address, backend, key, static_dir):
+    def __init__(self, address, backend, key, static_dir, passkeys=None, owner=''):
         super().__init__(address, Handler)
         self.backend, self.key, self.static_dir = backend, key, static_dir
+        self.passkeys, self.owner = passkeys, owner
+        self.origin = passkeys.origin if passkeys else None
         self.sessions = {}
         self.auth_lock = threading.Lock()
         self.login_attempts = deque(maxlen=32)
@@ -184,6 +187,8 @@ class Server(ThreadingHTTPServer):
         self.allowed_hosts = {f'{address[0]}:{self.server_port}'}
         if address[0] == '127.0.0.1':
             self.allowed_hosts.add(f'localhost:{self.server_port}')
+        if passkeys:
+            self.allowed_hosts = {urlsplit(passkeys.origin).netloc}
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):
@@ -229,7 +234,23 @@ class Handler(BaseHTTPRequestHandler):
         self.close_connection = True
 
     def host_valid(self):
-        return self.headers.get('Host') in self.server.allowed_hosts
+        return (self.headers.get('Host') in self.server.allowed_hosts and
+                (not self.server.passkeys or self.client_address[0] == '127.0.0.1'))
+
+    def is_owner(self):
+        return bool(self.server.owner and self.client_address[0] == '127.0.0.1' and
+                    self.headers.get('Tailscale-User-Login') == self.server.owner)
+
+    def issue_session(self):
+        with self.server.auth_lock:
+            stamp = time.monotonic()
+            self.server.sessions = {k: v for k, v in self.server.sessions.items() if v['expires'] > stamp}
+            if len(self.server.sessions) >= 32:
+                self.server.sessions.pop(next(iter(self.server.sessions)))
+            token = secrets.token_urlsafe(32)
+            self.server.sessions[token] = dict(csrf=secrets.token_urlsafe(24), expires=stamp + 28800)
+        secure = '; Secure' if self.server.passkeys else ''
+        return self.respond(200, {'ok': True}, cookie=f'altserver_session={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800{secure}')
 
     def session(self):
         cookie = SimpleCookie()
@@ -250,6 +271,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path in STATIC:
             filename, kind = STATIC[self.path]
             return self.respond(200, (self.server.static_dir / filename).read_bytes(), kind)
+        if self.path == '/api/auth':
+            keys = self.server.passkeys
+            return self.respond(200, dict(passkeys=bool(keys), registered=bool(keys and keys.registered),
+                                         can_register=bool(keys and not keys.registered and self.is_owner())))
         session = self.session()
         if not session:
             return self.respond(401, {'error': 'login_required'})
@@ -262,20 +287,46 @@ class Handler(BaseHTTPRequestHandler):
         return self.respond(404, {'error': 'not_found'})
 
     def do_POST(self):
-        if not self.host_valid() or self.headers.get('Origin') != 'http://' + self.headers.get('Host', ''):
+        origin = self.server.origin or 'http://' + self.headers.get('Host', '')
+        if not self.host_valid() or self.headers.get('Origin') != origin:
             return self.respond(403, {'error': 'origin'})
         if self.headers.get('Content-Type', '').split(';')[0] != 'application/json' or self.headers.get('Transfer-Encoding'):
             return self.respond(415, {'error': 'content_type'})
         try:
             size = int(self.headers.get('Content-Length', '0'))
-            if not 0 < size <= 4096:
+            if not 0 < size <= (65536 if self.path.startswith('/api/passkey/') else 4096):
                 return self.respond(413, {'error': 'body_size'})
             body = json.loads(self.rfile.read(size))
             if not isinstance(body, dict):
                 raise ValueError()
         except (ValueError, TimeoutError):
             return self.respond(400, {'error': 'invalid_json'})
+        if self.path.startswith('/api/passkey/'):
+            if not self.server.passkeys:
+                return self.respond(404, {'error': 'unavailable'})
+            if self.path not in ('/api/passkey/register/options', '/api/passkey/register/verify',
+                                 '/api/passkey/login/options', '/api/passkey/login/verify'):
+                return self.respond(404, {'error': 'not_found'})
+            register = '/register/' in self.path
+            owner = self.server.owner if self.is_owner() else ''
+            with self.server.auth_lock:
+                stamp = time.monotonic()
+                if sum(stamp - t < 60 for t in self.server.login_attempts) >= 20:
+                    return self.respond(429, {'error': 'rate_limit'})
+                self.server.login_attempts.append(stamp)
+            try:
+                if self.path.endswith('/options'):
+                    token, options = self.server.passkeys.options(register, owner)
+                    return self.respond(200, options, cookie=f'altserver_ceremony={token}; HttpOnly; Secure; SameSite=Strict; Path=/api/passkey/; Max-Age=180')
+                cookie = SimpleCookie(self.headers.get('Cookie', ''))
+                token = cookie['altserver_ceremony'].value
+                self.server.passkeys.finish(token, body, register, owner)
+            except Exception:
+                return self.respond(400, {'error': 'passkey_failed'})
+            return self.issue_session()
         if self.path == '/api/login':
+            if self.server.passkeys:
+                return self.respond(403, {'error': 'passkey_required'})
             with self.server.auth_lock:
                 stamp = time.monotonic()
                 recent = [t for t in self.server.login_attempts if stamp - t < 60]
@@ -299,7 +350,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/api/logout':
             with self.server.auth_lock:
                 self.server.sessions = {k: v for k, v in self.server.sessions.items() if v is not session}
-            return self.respond(200, {'ok': True}, cookie='altserver_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
+            return self.respond(200, {'ok': True}, cookie='altserver_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' + ('; Secure' if self.server.passkeys else ''))
         if self.path == '/api/action':
             try:
                 accepted = self.server.backend.start(body.get('action'), body.get('target'))
@@ -335,7 +386,17 @@ def main():
         if len(key) < 32:
             parser.error('Access key must contain at least 32 characters')
     backend = Backend(args.demo, args.env_file)
-    server = Server((str(address), args.port), backend, key, Path(__file__).parent / 'static')
+    origin, owner = os.environ.get('WEBUI_ORIGIN', ''), os.environ.get('WEBUI_OWNER', '')
+    passkeys = None
+    if origin:
+        parsed = urlsplit(origin)
+        if (args.demo or str(address) != '127.0.0.1' or parsed.scheme != 'https' or
+                not parsed.hostname or not parsed.hostname.endswith('.ts.net') or parsed.path or
+                parsed.query or parsed.fragment or parsed.username or not owner):
+            parser.error('Passkeys require loopback, a Tailscale HTTPS origin and WEBUI_OWNER')
+        from passkeys import Passkeys
+        passkeys = Passkeys(args.state_dir / 'passkeys.json', origin, parsed.hostname)
+    server = Server((str(address), args.port), backend, key, Path(__file__).parent / 'static', passkeys, owner)
     print(f'AltServer Console listening on http://{args.listen}:{server.server_port}', flush=True)
     try:
         server.serve_forever()

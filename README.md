@@ -42,10 +42,10 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 サービス状態・iPhone接続・診断ログ・復旧操作をまとめた、日本語／英語の画面を追加できます。
 
 ```sh
-sudo sh scripts/install-web-ui.sh
+sudo sh scripts/install-web-ui.sh --tailscale
 ```
 
-AltServerの設定後に実行してください。初期設定はループバック接続・アクセスキー認証です。リモート利用にはTailscaleまたはSSHポート転送を使います。[導入・使い方](docs/web-ui.md)
+AltServerの設定後に実行してください。Tailscale経由のHTTPSで初回にパスキーを登録し、次回からパスキーでログインします。[導入・使い方](docs/web-ui.md)
 
 ## 主な修正
 

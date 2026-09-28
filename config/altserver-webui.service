@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 EnvironmentFile=/etc/altserver-webui.env
-ExecStart=/usr/bin/python3 /opt/altserver-native/web/server.py --listen ${WEBUI_LISTEN} --port ${WEBUI_PORT}
+ExecStart=/opt/altserver-native/web-venv/bin/python /opt/altserver-native/web/server.py --listen ${WEBUI_LISTEN} --port ${WEBUI_PORT}
 User=root
 UMask=0077
 Restart=on-failure

@@ -42,10 +42,10 @@ Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release a
 Add a Japanese/English dashboard for service status, iPhone connectivity, diagnostic logs and recovery controls:
 
 ```sh
-sudo sh scripts/install-web-ui.sh
+sudo sh scripts/install-web-ui.sh --tailscale
 ```
 
-Requires a configured AltServer host. Defaults to loopback access with a private access key; use Tailscale or SSH forwarding for remote access. See [Web UI setup and usage](docs/web-ui.md).
+Requires a configured AltServer host. Uses Tailscale HTTPS: register a passkey on the first visit, then sign in with that passkey. See [Web UI setup and usage](docs/web-ui.md).
 
 ## Changes
 
