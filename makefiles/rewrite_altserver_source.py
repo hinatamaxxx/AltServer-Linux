@@ -18,6 +18,10 @@ content = content.replace(b'boost/filesystem.hpp', b'filesystem')
 content = content.replace(b'boost::filesystem', b'std::filesystem')
 content = content.replace(b'#include <windows.h>', b'')
 content = content.replace(b'#include <debugapi.h>', b'')
+content = content.replace(b'#include <Guiddef.h>', b'')
+
+if F.endswith('AltServerApp.h'):
+    content = content.replace(b'GUID _notificationIconGUID;', b'// Windows tray icon is not used on Linux.')
 
 if F.endswith('AltServerApp.cpp'):
 
@@ -25,6 +29,10 @@ if F.endswith('AltServerApp.cpp'):
     # IDCANCEL
     # fs::path AltServerApp::appDataDirectoryPath
     content = content.replace(b'\r', b'')
+    content, count = re.subn(br'AltServerApp::AltServerApp\(\) : _appGroupSemaphore\(1\)\n\{[\s\S]+?\n\}',
+                            b'AltServerApp::AltServerApp() : _appGroupSemaphore(1), _helpError(nullptr) {}', content)
+    if count != 1:
+        raise RuntimeError('Review Linux application initialization after an upstream update')
 
     content = content.replace(b'#include <windows.h>\n', b'')
     content = content.replace(b'#include <windowsx.h>\n', b'')
@@ -58,7 +66,7 @@ if F.endswith('AltServerApp.cpp'):
     
     content = insertBefore(content, b'AltServerApp* AltServerApp::_instance = nullptr;', br'''
 #define IDCANCEL 0
-#define MessageBox(x, content, title, xx) (this->ShowAlert(title, content " (Ctrl-C to avoid)"), 1)
+#define MessageBox(x, content, title, xx) (this->ShowAlert(title, std::string(content) + " (Ctrl-C to avoid)"), 1)
 
 // Observes all exceptions that occurred in all tasks in the given range.
 template<class T, class InIt>

@@ -13,6 +13,7 @@ RUN apk add --no-cache openssl \
       -lssl -lcrypto -lz -o /tmp/test-ldid \
     && python3 tools/check-signing.py /tmp/test-ldid \
     && python3 tools/check-gsa-client.py \
+    && python3 tools/check-authentication-http.py \
     && python3 tools/check-request-framing.py \
     && python3 tools/check-native-netmux.py
 
