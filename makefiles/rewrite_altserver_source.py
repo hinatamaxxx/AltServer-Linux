@@ -44,9 +44,15 @@ if F.endswith('AltServerApp.cpp'):
     content = content.replace(b'#include "resource.h"\n', b'')
 
     def removePart(content, start, end):
-        content = re.sub(br'\n' + start + br'[\S\s]+?(' + end + br')', br'\1', content)
+        content, count = re.subn(br'\n' + start + br'[\S\s]+?(' + end + br')', br'\1', content)
+        if count != 1:
+            raise RuntimeError('Review Linux source transformation: ' + start.decode())
         return content
-    content = removePart(content, br'const char\* REGISTRY_ROOT_KEY', br'\nAltServerApp\* AltServerApp::_instance')
+    # Keep the official source URL / bundle ID configuration between the
+    # registry constants and functions. Removing the whole Windows preamble
+    # also removed these portable settings when upstream introduced them.
+    content = removePart(content, br'const char\* REGISTRY_ROOT_KEY', br'\n#if STAGING')
+    content = removePart(content, br'HKEY OpenRegistryKey\(\)', br'\nAltServerApp\* AltServerApp::_instance')
     content = removePart(content, br'static int CALLBACK BrowseFolderCallback', br'\npplx::task<std::shared_ptr<Application>> AltServerApp::InstallApplication')
     content = removePart(content, br'\n.*? AltServerApp::Authenticate', br'\npplx::task<std::shared_ptr<Team>> AltServerApp::FetchTeam')
     content = removePart(content, br'void AltServerApp::ShowNotification', br'\nvoid AltServerApp::ShowErrorAlert')
@@ -61,6 +67,8 @@ if F.endswith('AltServerApp.cpp'):
     content = removePart(content, br'bool AltServerApp::CheckDependencies', br'\nfs::path AltServerApp::certificatesDirectoryPath')
 
     def insertBefore(content, marker, newcontent):
+        if content.count(marker) != 1:
+            raise RuntimeError('Review Linux insertion point: ' + marker.decode())
         content = content.replace(marker, newcontent + b'\n' + marker)
         return content
     
