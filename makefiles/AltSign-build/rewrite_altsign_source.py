@@ -17,6 +17,7 @@ content = content.replace(b'"%FT%T%z"', b'"%Y-%m-%dT%H:%M:%SZ"')
 content = content.replace(b'localtime(', b'gmtime(')
 
 content = content.replace(b'winsock2.h', b'WinSock2.h')
+content = content.replace(b'#include <windows.h>', b'')
 
 # Official Windows creates a client per request. Linux uses cpprest's native
 # backend rather than WinHTTP; certificate validation must remain enabled.
@@ -29,5 +30,39 @@ if F.endswith('AppleAPI.cpp'):
     content, count = re.subn(br'\s*config\.set_nativehandle_options\(\[\]\(web::http::client::native_handle handle\)[\s\S]+?\n\s*\}\);', b'', content)
     if count != 1:
         raise RuntimeError('Review WinHTTP GSA adapter after an AltSign update')
+
+if F.endswith('AppleAPI+Authentication.cpp'):
+    content = content.replace(b'\r\n', b'\n')
+    for old in (b'U("akd/1.0 CFNetwork/978.0.7 Darwin/18.7.0")', b'U("Xcode")'):
+        if content.count(old) != 1:
+            raise RuntimeError('Review authentication User-Agent after an upstream update')
+        content = content.replace(old, b'altserver::auth::userAgent')
+    # Official AltSign checks HTTP status before asking for a code or parsing
+    # its response. Keep the original SMS incorrect-code/PE-token check.
+    boundaries = (
+        (b'AppleAPI::RequestTrustedDeviceTwoFactorCode(', b'AppleAPI::RequestSMSTwoFactorCode(',
+         (b'requireSuccess', b'requireSuccess')),
+        (b'AppleAPI::RequestSMSTwoFactorCode(', b'AppleAPI::FetchAccount(',
+         (b'requireSuccess', b'requireServerAvailable')),
+    )
+    for start, end, guards in boundaries:
+        if content.count(start) != 1 or content.count(end) != 1:
+            raise RuntimeError('Review 2FA function boundaries after an upstream update')
+        begin, finish = content.index(start), content.index(end)
+        part = content[begin:finish]
+        marker = b'return response.content_ready();'
+        if part.count(marker) != len(guards):
+            raise RuntimeError('Review 2FA response handlers after an upstream update')
+        segments = part.split(marker)
+        part = segments[0]
+        for guard, segment in zip(guards, segments[1:]):
+            part += b'altserver::auth::' + guard + b'(response.status_code());\n' + marker + segment
+        content = content[:begin] + part + content[finish:]
+    # The upstream debug macro prints decrypted authentication data and tokens.
+    # Removing its evaluation also avoids dereferencing those values for logs.
+    content, count = re.subn(br'^#define odslog\(msg\).*$', b'#define odslog(msg) do {} while (0)', content, flags=re.M)
+    if count != 1:
+        raise RuntimeError('Review authentication logging after an upstream update')
+    content = b'#include "AuthenticationPolicy.h"\n' + content
 
 sys.stdout.buffer.write(content)

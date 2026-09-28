@@ -12,7 +12,7 @@ LDID_NEWROOT := $(BUILD_DIR)/ldid_patched
 
 include $(MAIN_DIR)/makefiles/AltWindowsShim.mak
 
-CFLAGS += -I$(ALTSIGN_ROOT) -I$(MINIZIP_ROOT) -I$(LDID_ROOT) -mno-sse
+CFLAGS += -I$(ALTSIGN_NEWROOT) -I$(ALTSIGN_ROOT) -I$(MINIZIP_ROOT) -I$(LDID_ROOT) -I$(MAIN_DIR)/src -mno-sse
 #CFLAGS += -DLDID_NOTOOLS # will lose some symbol if enable this
 
 CXXFLAGS = $(CFLAGS) -std=c++17
@@ -58,6 +58,8 @@ $(BUILD_DIR)/objs/%.c.o : $(BUILD_DIR)/%.c
 $(BUILD_DIR)/objs/%.cpp.o : $(BUILD_DIR)/%.cpp
 	mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(EXTRA_FLAGS) -o $@ -c $<
+
+$(BUILD_DIR)/objs/AltSign_patched/AppleAPI+Authentication.cpp.o: $(MAIN_DIR)/src/AuthenticationPolicy.h
 
 $(BUILD_DIR)/objs/%.c.o : $(MAIN_DIR)/%.c
 	mkdir -p $(@D)

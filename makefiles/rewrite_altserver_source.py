@@ -16,6 +16,8 @@ content = content.replace(b'std::string_convert', b'std::wstring_convert')
 
 content = content.replace(b'boost/filesystem.hpp', b'filesystem')
 content = content.replace(b'boost::filesystem', b'std::filesystem')
+content = content.replace(b'#include <windows.h>', b'')
+content = content.replace(b'#include <debugapi.h>', b'')
 
 if F.endswith('AltServerApp.cpp'):
 
