@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only wire-format check for the unmodified AltServer-Linux v0.0.5.
+"""Read-only wire-format check for this fork's native address support (v0.1.3+).
 
 Does not read pairing records, change device registration, or print identities.
 An empty DeviceList is inconclusive (exit 2), never a compatibility pass.
@@ -32,10 +32,10 @@ def classify(address):
         return "legacy-bsd-ipv4" if address[0] < 16 else "bsd-ipv4"
     if address[1] == 30 and 28 <= address[0] <= len(address):
         return "bsd-ipv6"
-    if address[:2] == b"\x02\x00":
-        return "native-linux-ipv4-incompatible"
-    if address[:2] in (b"\x0a\x00", b"\x1e\x00"):
-        return "native-or-malformed-ipv6-incompatible"
+    if address[:2] == b"\x02\x00" and len(address) >= 16:
+        return "native-linux-ipv4"
+    if address[:2] == b"\x0a\x00" and len(address) >= 28:
+        return "native-linux-ipv6"
     return "unknown-incompatible"
 
 
@@ -67,9 +67,10 @@ def main():
     args = parser.parse_args()
     try:
         formats = inspect(args.host, args.port)
-        compatible = bool(formats) and all(f in ("legacy-bsd-ipv4", "bsd-ipv4", "bsd-ipv6") for f in formats)
+        compatible = bool(formats) and all(f in ("legacy-bsd-ipv4", "bsd-ipv4", "bsd-ipv6",
+                                                 "native-linux-ipv4", "native-linux-ipv6") for f in formats)
         print(json.dumps({"scope": "address-format-only", "network_devices": len(formats),
-                          "formats": formats, "compatible_with_altserver_0_0_5": compatible}))
+                          "formats": formats, "compatible_with_native_altserver": compatible}))
         return 0 if compatible else (1 if formats else 2)
     except (OSError, ValueError, plistlib.InvalidFileException) as exc:
         print(json.dumps({"error": type(exc).__name__}))

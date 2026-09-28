@@ -55,21 +55,11 @@ else
   unhealthy=1
 fi
 
-query=query
-if [ "${NETMUXD_REGISTER_MODE:-}" = api ]; then query=backend; fi
-if ! systemctl is-active --quiet altserver-native-netmuxd.service || ! "$probe" "$query"; then
+if ! systemctl is-active --quiet altserver-native-netmuxd.service || ! "$probe" query; then
   recover netmux altserver-native-netmuxd.service
   exit 1
 fi
 reset netmux
-
-if [ "${NETMUXD_REGISTER_MODE:-}" = api ]; then
-  if ! systemctl is-active --quiet altserver-netmux-compat.service || ! "$probe" query; then
-    recover adapter altserver-netmux-compat.service
-    exit 1
-  fi
-  reset adapter
-fi
 
 if ! current_ip="$("$probe" discover)"; then
   log "waiting_for_device: configured iPhone is unavailable; infrastructure checked"

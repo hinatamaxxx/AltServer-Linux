@@ -16,12 +16,12 @@ class WireFormatTests(unittest.TestCase):
         self.assertEqual(compat.classify(bytes.fromhex("0a020000c0000201") + bytes(144)), "legacy-bsd-ipv4")
         for size in (128, 152):
             self.assertEqual(compat.classify(bytes.fromhex("02000000c0000201") + bytes(size - 8)),
-                             "native-linux-ipv4-incompatible")
+                             "native-linux-ipv4")
 
     def test_bsd_ipv6_and_linux_ipv6_are_distinct(self):
         self.assertEqual(compat.classify(bytes.fromhex("1c1e0000") + bytes(24)), "bsd-ipv6")
         self.assertEqual(compat.classify(bytes.fromhex("0a000000") + bytes(24)),
-                         "native-or-malformed-ipv6-incompatible")
+                         "native-linux-ipv6")
 
     def test_short_and_invalid_values_fail_closed(self):
         for value in (None, "02000000", b"", b"\x02\x00", b"\x10\x02" + bytes(6)):
@@ -56,7 +56,7 @@ class WireFormatTests(unittest.TestCase):
     def test_fragmented_wire_response(self):
         self.assertEqual(self.inspect_response({"DeviceList": [{"Properties": {
             "ConnectionType": "Network", "NetworkAddress": b"\x02\x00" + bytes(126)}}]}),
-            ["native-linux-ipv4-incompatible"])
+            ["native-linux-ipv4"])
 
     def test_no_network_device_is_inconclusive(self):
         self.assertEqual(self.inspect_response({"DeviceList": []}), [])

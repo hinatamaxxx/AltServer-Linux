@@ -7,7 +7,6 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$script_dir"
 install -m 0755 scripts/runtime/altserver-anisette-migrate /usr/local/sbin/altserver-anisette-migrate
 install -m 0755 scripts/runtime/altserver-native-probe /usr/local/sbin/altserver-native-probe
-install -m 0755 scripts/runtime/altserver-netmux-compat /usr/local/sbin/altserver-netmux-compat
 
 install -m 0755 scripts/runtime/iphone-mobdev-address-publisher /usr/local/sbin/iphone-mobdev-address-publisher
 install -m 0755 scripts/runtime/iphone-mobdev-service-publisher /usr/local/sbin/iphone-mobdev-service-publisher

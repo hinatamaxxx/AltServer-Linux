@@ -135,11 +135,11 @@ class MigrationTests(unittest.TestCase):
 
 @unittest.skipUnless(os.name == "posix", "requires POSIX shell")
 class HealthTests(unittest.TestCase):
-    def test_adapter_failure_does_not_restart_healthy_netmuxd(self):
+    def test_direct_netmux_failure_restarts_only_netmuxd(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
             (directory / "config").write_text("NETMUXD_REGISTER_MODE=api\n")
-            (directory / "probe").write_text('#!/bin/sh\ncase "$1" in anisette|altserver|backend) exit 0;; *) exit 1;; esac\n')
+            (directory / "probe").write_text('#!/bin/sh\ncase "$1" in anisette|altserver) exit 0;; *) exit 1;; esac\n')
             (directory / "systemctl").write_text('#!/bin/sh\nif [ "$1" = restart ]; then echo "$2" >>"$CALLS"; fi\nexit 0\n')
             (directory / "logger").write_text('#!/bin/sh\nexit 0\n')
             for name in ("probe", "systemctl", "logger"):
@@ -152,7 +152,7 @@ class HealthTests(unittest.TestCase):
                 result = subprocess.run(["sh", str(ROOT / "scripts/runtime/altserver-native-healthcheck")],
                                         env=env, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 1, result.stderr)
-            self.assertEqual((directory / "calls").read_text(), "altserver-netmux-compat.service\n")
+            self.assertEqual((directory / "calls").read_text(), "altserver-native-netmuxd.service\n")
 
     def test_offline_phone_does_not_hide_server_failure_and_cooldown(self):
         with tempfile.TemporaryDirectory() as tmp:

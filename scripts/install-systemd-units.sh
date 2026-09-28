@@ -24,7 +24,7 @@ Wants=network-online.target avahi-daemon.service usbmuxd.service
 [Service]
 Type=simple
 WorkingDirectory=${ALTSERVER_HOME}
-ExecStart=${NETMUXD_BIN} --disable-unix --disable-usb --host 127.0.0.1 --port 27016 --plist-storage /var/lib/lockdown --upstream-usbmuxd /var/run/usbmuxd
+ExecStart=${NETMUXD_BIN} --disable-unix --disable-usb --host 127.0.0.1 --port 27015 --plist-storage /var/lib/lockdown --upstream-usbmuxd /var/run/usbmuxd
 Restart=always
 RestartSec=5
 
@@ -35,8 +35,8 @@ UNIT
 cat >/etc/systemd/system/altserver-native.service <<UNIT
 [Unit]
 Description=AltServer native
-After=network-online.target avahi-daemon.service altserver-anisette-docker.service altserver-netmux-compat.service iphone-mobdev-address.service iphone-mobdev-service.service
-Wants=network-online.target avahi-daemon.service altserver-anisette-docker.service altserver-native-netmuxd.service altserver-netmux-compat.service iphone-mobdev-address.service iphone-mobdev-service.service
+After=network-online.target avahi-daemon.service altserver-anisette-docker.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
+Wants=network-online.target avahi-daemon.service altserver-anisette-docker.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
 
 [Service]
 Type=simple
@@ -108,33 +108,10 @@ RestartSec=5
 WantedBy=multi-user.target
 UNIT
 
-cat >/etc/systemd/system/altserver-netmux-compat.service <<'UNIT'
-[Unit]
-Description=AltServer netmuxd address compatibility adapter
-After=altserver-native-netmuxd.service
-Wants=altserver-native-netmuxd.service
-
-[Service]
-ExecStart=/usr/local/sbin/altserver-netmux-compat
-DynamicUser=yes
-NoNewPrivileges=yes
-ProtectSystem=strict
-ProtectHome=yes
-PrivateTmp=yes
-RestrictAddressFamilies=AF_INET
-MemoryMax=192M
-Restart=on-failure
-RestartSec=2
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
 systemctl daemon-reload
 systemctl enable docker.service avahi-daemon.service
 systemctl enable altserver-anisette-docker.service
 systemctl enable altserver-native-netmuxd.service
-systemctl enable altserver-netmux-compat.service
 systemctl enable iphone-mobdev-address.service iphone-mobdev-service.service
 systemctl enable altserver-native.service
 

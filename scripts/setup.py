@@ -18,7 +18,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 HOME = Path('/opt/altserver-native')
 ENV = Path('/etc/altserver-native.env')
-TAG = 'v0.1.2'
+TAG = 'v0.1.3'
 RELEASE = f'https://github.com/hinatamaxxx/AltServer-Linux/releases/download/{TAG}'
 NETMUX_URL = ('https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/'
               'netmuxd-x86_64-unknown-linux-gnu.tar.gz')
@@ -90,7 +90,7 @@ def prepare():
     if ENV.exists() or (HOME / 'bin/AltServer').exists():
         if not ENV.exists() and (HOME / 'setup-state.json').is_file():
             state = json.loads((HOME / 'setup-state.json').read_text())
-            if state.get('phase') == 'prepared' and all((HOME / p).is_file() for p in
+            if state.get('version') == TAG and state.get('phase') == 'prepared' and all((HOME / p).is_file() for p in
                                                        ('bin/AltServer', 'bin/netmuxd', 'anisette-image')):
                 print('Already prepared. Connect/trust an iPhone later, then use --configure.')
                 return
@@ -151,9 +151,11 @@ def prepare():
 
 
 def configure():
+    state_path = HOME / 'setup-state.json'
+    state = json.loads(state_path.read_text()) if state_path.is_file() else {}
+    if state.get('version') != TAG:
+        raise ValueError('Prepared version differs or is missing; existing files retained. See docs/setup.md')
     if ENV.exists():
-        state_path = HOME / 'setup-state.json'
-        state = json.loads(state_path.read_text()) if state_path.is_file() else {}
         digest = hashlib.sha256(ENV.read_bytes()).hexdigest()
         if state.get('configuration_sha256') != digest:
             raise ValueError('Existing configuration retained; automatic overwrite is disabled')
@@ -164,6 +166,8 @@ def configure():
             raise ValueError('Unknown setup state; configuration retained')
         activate(state)
         return
+    if state.get('phase') != 'prepared':
+        raise ValueError('Run --prepare first; existing setup state retained')
     for path in ('bin/AltServer', 'bin/netmuxd', 'anisette-image'):
         if not (HOME / path).is_file():
             raise ValueError('Run --prepare first')
@@ -199,11 +203,13 @@ def configure():
 
 
 def activate(state):
+    if state.get('version') != TAG:
+        raise ValueError('Cannot activate files prepared by another version')
     env = dict(os.environ, ENV_FILE=str(ENV))
     run('sh', str(ROOT / 'scripts/install-helper-scripts.sh'), env=env)
     run('sh', str(ROOT / 'scripts/install-systemd-units.sh'), env=env)
     run('systemctl', 'start', 'altserver-anisette-docker.service', 'altserver-native-netmuxd.service',
-        'altserver-netmux-compat.service', 'iphone-mobdev-address.service', 'iphone-mobdev-service.service',
+        'iphone-mobdev-address.service', 'iphone-mobdev-service.service',
         'altserver-native.service', 'altserver-native-healthcheck.timer')
     state['phase'] = 'configured'
     atomic_write(HOME / 'setup-state.json', json.dumps(state).encode())

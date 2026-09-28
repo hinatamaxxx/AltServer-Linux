@@ -187,9 +187,6 @@ def main():
     if action == "query":
         devices()
         return 0
-    if action == "backend":
-        mux_request({"MessageType": "ListDevices"}, ("127.0.0.1", 27016))
-        return 0
     if action == "discover":
         address = discover()
         if address:

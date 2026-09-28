@@ -21,6 +21,11 @@ $(BUILD_DIR)/objs/%.cpp.o : $(MAIN_DIR)/%.cpp
 include $(ROOT_DIR)/libimobiledevice-files.mak
 
 libimobiledevice_obj := $(libimobiledevice_src:$(MAIN_DIR)/%=$(BUILD_DIR)/objs/%.o)
+$(BUILD_DIR)/objs/libraries/libimobiledevice/src/idevice.c.o: $(LIB_DIR)/libimobiledevice/src/idevice.c $(ROOT_DIR)/rewrite_idevice_source.py
+	mkdir -p $(@D)
+	python3 $(ROOT_DIR)/rewrite_idevice_source.py "$<" > $(BUILD_DIR)/idevice_native.c
+	$(CC) $(CFLAGS) $(EXTRA_FLAGS) -I$(LIB_DIR)/libimobiledevice/src -o $@ -c $(BUILD_DIR)/idevice_native.c
+
 $(libimobiledevice_obj) : EXTRA_FLAGS := -I$(ROOT_DIR) $(libimobiledevice_include) $(libplist_include) -I$(LIB_DIR)/libimobiledevice/common -I$(LIB_DIR)/libusbmuxd/common
 $(BUILD_DIR)/libimobiledevice.a : $(libimobiledevice_obj)
 	ar rcs $@ $^

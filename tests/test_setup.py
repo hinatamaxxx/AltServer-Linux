@@ -19,7 +19,7 @@ class SetupTests(unittest.TestCase):
             home = Path(tmp)
             env = home / 'config'
             env.write_bytes(b'fixture configuration')
-            state = dict(phase='configuring', configuration_sha256=hashlib.sha256(env.read_bytes()).hexdigest())
+            state = dict(version=setup.TAG, phase='configuring', configuration_sha256=hashlib.sha256(env.read_bytes()).hexdigest())
             (home / 'setup-state.json').write_text(json.dumps(state))
             with patch.object(setup, 'HOME', home), patch.object(setup, 'ENV', env), \
                  patch.object(setup, 'activate') as activate, patch.object(setup, 'output') as output:
@@ -39,11 +39,28 @@ class SetupTests(unittest.TestCase):
             (home / 'bin').mkdir()
             for name in ('bin/AltServer', 'bin/netmuxd', 'anisette-image'):
                 (home / name).write_text('fixture')
-            (home / 'setup-state.json').write_text(json.dumps(dict(phase='prepared')))
+            (home / 'setup-state.json').write_text(json.dumps(dict(version=setup.TAG, phase='prepared')))
             with patch.object(setup, 'HOME', home), patch.object(setup, 'ENV', home / 'absent'), \
                  patch.object(setup, 'run') as run:
                 setup.prepare()
                 run.assert_not_called()
+
+    def test_old_preparation_cannot_activate_new_units(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / 'bin').mkdir()
+            for name in ('bin/AltServer', 'bin/netmuxd', 'anisette-image'):
+                (home / name).write_text('old fixture')
+            state = dict(version='v0.1.2', phase='prepared')
+            (home / 'setup-state.json').write_text(json.dumps(state))
+            with patch.object(setup, 'HOME', home), patch.object(setup, 'ENV', home / 'absent'), \
+                 patch.object(setup, 'run') as run, patch.object(setup, 'output') as output:
+                for action in (setup.prepare, setup.configure, lambda: setup.activate(state)):
+                    with self.assertRaises(ValueError):
+                        action()
+                run.assert_not_called()
+                output.assert_not_called()
+            self.assertEqual((home / 'bin/AltServer').read_text(), 'old fixture')
 
     def test_shell_metacharacters_and_invalid_addresses_rejected(self):
         udid = '0' * 40

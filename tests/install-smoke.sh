@@ -33,6 +33,11 @@ sh install.sh --configure
 sh install.sh --configure
 test "$(stat -c %a /etc/altserver-native.env)" = 600
 grep -q 'NETMUXD_REGISTER_MODE=api' /etc/altserver-native.env
+grep -q 'USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015' /etc/altserver-native.env
+grep -q -- '--port 27015' /etc/systemd/system/altserver-native-netmuxd.service
+test ! -e /usr/local/sbin/altserver-netmux-compat
+test ! -e /etc/systemd/system/altserver-netmux-compat.service
+! grep -q 'altserver-netmux-compat' /work/systemctl-calls
 grep -q 'sha256:' /etc/altserver-native.env
 /usr/bin/systemd-analyze verify /etc/systemd/system/altserver-*.service \
   /etc/systemd/system/altserver-*.timer /etc/systemd/system/iphone-mobdev-*.service
