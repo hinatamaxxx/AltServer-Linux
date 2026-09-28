@@ -23,6 +23,25 @@ content = content.replace(b'#include <Guiddef.h>', b'')
 if F.endswith('AltServerApp.h'):
     content = content.replace(b'GUID _notificationIconGUID;', b'// Windows tray icon is not used on Linux.')
 
+# Newer native libraries can introduce enum values absent from the Windows
+# source. Returning no value from an error mapper is undefined behavior.
+error_defaults = {
+    'InstallError.hpp': (b'return "The app\'s Info.plist could not be found.";',
+                         b'default: return std::nullopt;'),
+    'DeveloperDiskManager.h': (b'return "DeveloperDiskImage.dmg and its signature could not be found in the downloaded archive.";',
+                               b'default: return std::nullopt;'),
+}
+for filename, (marker, fallback) in error_defaults.items():
+    if F.endswith(filename):
+        if content.count(marker) != 1:
+            raise RuntimeError('Review error fallback: ' + filename)
+        content = content.replace(marker, marker + b'\n        ' + fallback)
+if F.endswith('ConnectionError.hpp'):
+    for marker in (b'case MOBILE_IMAGE_MOUNTER_E_UNKNOWN_ERROR:', b'case DEBUGSERVER_E_UNKNOWN_ERROR:'):
+        if content.count(marker) != 1:
+            raise RuntimeError('Review native error fallback: ' + marker.decode())
+        content = content.replace(marker, b'default: ' + marker)
+
 if F.endswith('AltServerApp.cpp'):
 
     # MessageBox

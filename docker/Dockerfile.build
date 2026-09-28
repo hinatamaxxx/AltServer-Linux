@@ -16,6 +16,12 @@ RUN apk add --no-cache openssl \
     && python3 tools/check-authentication-http.py \
     && python3 tools/check-request-framing.py \
     && python3 tools/check-native-netmux.py
+RUN clang++ -std=c++17 -include shims/windows_shim.h \
+      -Ibuild/AltServer_patched -Ibuild/AltSign_patched -Ishims \
+      -Ilibraries/libimobiledevice/include -Ilibraries/libplist/include \
+      tests/error_mapping.cpp build/objs/AltSign_patched/Error.cpp.o \
+      build/objs/AltSign_patched/Device.cpp.o -lcpprest -lssl -lcrypto -lpthread \
+      -o /tmp/test-errors && /tmp/test-errors
 
 FROM scratch AS export
 COPY --from=build /workdir/build/AltServer-x86_64 /AltServer-x86_64
