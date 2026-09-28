@@ -9,8 +9,9 @@ int main(int argc, char** argv)
     assert(argc == 3);
     idevice_info_t* list = NULL;
     int count = 0;
-    assert(idevice_get_device_list_extended(&list, &count) == IDEVICE_E_SUCCESS);
     const int valid = atoi(argv[2]);
+    const idevice_error_t enumeration = idevice_get_device_list_extended(&list, &count);
+    assert(enumeration == (valid ? IDEVICE_E_SUCCESS : IDEVICE_E_NO_DEVICE));
     assert(count == valid);
     if (valid) assert(list[0]->conn_type == CONNECTION_NETWORK);
     idevice_device_list_extended_free(list);
