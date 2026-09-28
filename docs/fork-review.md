@@ -1,5 +1,9 @@
 # フォーク調査 / Fork review — 2026-09-28
 
+v0.2.0 では C++ 基盤と端末通信ライブラリを公式リポジトリへ移しました。以下の v0.1.x の採用記録は経緯として保持しています。現在の参照先と変更点は[取り込み元](provenance.md)と[公式実装の調査](upstream-review.md)を参照してください。
+
+v0.2.0 moves the C++ base and device libraries to official repositories. The v0.1.x adoption records below remain as history. See [provenance](provenance.md) and the [official-source review](upstream-review.md) for current references and adaptations.
+
 ## 日本語
 
 上流のフォーク一覧、関連 PR、候補の差分を確認し、既存の復旧構成に適用できる修正を選びました。他プロジェクトの実機成功報告は、本フォークの実機検証として扱いません。

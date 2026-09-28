@@ -37,9 +37,10 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 
 ## 主な修正
 
+- v0.2.0: C++ 基盤と端末通信ライブラリの参照先を公式リポジトリへ変更。公式 Windows の 1.7.5 開発ソースに含まれる認証処理を取り込み、2FA の HTTP エラー判定・認証ログ・未知のエラーコード処理を修正しました。アドレス互換処理は入力部分に集約しています。版番号は `VERSION` で一元管理し、`--version` で確認できます。[保守手順](docs/maintenance.md)も追加しました。
 - v0.1.3: 互換アダプターを削除し、jaakkopalvaila の libimobiledevice 修正を取り込みました。AltServer が Linux/BSD の IPv4・IPv6 アドレスを直接扱います。コピー長の境界値も補強しています。公式上流へのマージを意味するものではありません。
 - v0.1.2: Bonjour ヘルパーの64ビット型・文字列とバイナリの受け渡しを修正し、登録 API の失敗を親プロセスへ返します。AltKeeper を参考に JSON 要求を 4 MiB までに制限し、不正な長さを本文受信前に拒否します。IPA 本体のサイズ制限ではありません。
-- v0.1.1: 他フォークで報告された Apple ID 認証ヘッダーと GSA 接続の修正、AltServer for Windows 1.7.4 と同じ ldid ソースを取り込み。新しい iOS での署名エラーへの対応が目的です。出典と採否は[フォーク調査](docs/fork-review.md)を参照してください。Apple への実ログインと iPhone 実機での動作は未検証です。
+- v0.1.1: 他フォークで報告された Apple ID 認証ヘッダーと GSA 接続の修正、AltServer for Windows 1.7.4 と同じ ldid ソースを取り込みました。新しい iOS での署名エラーへの対応が目的です。出典と採否は[フォーク調査](docs/fork-review.md)を参照してください。Apple への実ログインと iPhone 実機での動作は未検証です。
 - GSA の TLS 証明書検証を有効化し、既存コードにあった検証の無効化を除去。
 - Anisette の日時をホストのタイムゾーンに依存せず UTC として解釈。日付と64ビット routing info を検証。
 - Anisette 応答値のデバッグ出力を除去。HTTP 要求に15秒の制限を設定。

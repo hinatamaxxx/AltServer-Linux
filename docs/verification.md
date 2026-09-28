@@ -1,6 +1,22 @@
 # 検証記録 / Verification
 
-v0.1.3 の CI では Python 34件、ネイティブ通信9ケース、BSD コピー長512通りを試験します。アダプター試験を削除し、旧バージョンの準備状態を拒否する試験1件を追加しました。C++、署名、GSA、要求受信、CLI 6ケース、amd64 ビルド、Debian 13 での展開済みインストーラ試験も実行します。インストーラ試験はアダプターが配布・有効化されないことと、直接接続のポート設定も確認します。通信試験は模擬サーバー、サービス起動は記録用の模擬処理です。実機の iPhone 更新・Apple ログイン・ホスト再起動後の復旧は未検証です。[方式と出典](fork-review.md)を参照してください。
+## v0.2.0
+
+CI は Python 35件、CLI 8ケース、実際にビルドした端末ライブラリによる模擬通信16ケースを実行します。Linux/BSD IPv4・IPv6、短い入力、空データ、未対応 family、過大な入力を含み、BSD の全256通りの長さ値を両形式で検査します。
+
+生成済みの本番 C++ 2FA 処理を localhost の HTTP サーバーへ接続し、trusted-device / SMS の成功、401・503、コード要求前の失敗、検証時の失敗、PE-token 不在など12ケースを試験します。新しい User-Agent と UTC 日時も検査します。Apple のサービスへは接続せず、SMS 配信・Apple 認証の成功を証明するものではありません。未知のエラーコードの回帰試験も本番の生成済みヘッダーを使用します。
+
+署名、GSA 接続分離、JSON 要求長、USB 転送、Bonjour、amd64 全体ビルドと Debian 13 での展開済みインストーラー試験も継続します。インストーラーはチェックサムに加え、実行ファイルの版番号がセットアップと一致することを検査します。サービス起動は模擬処理です。実機・Apple ログイン・SMS 到着・ホスト再起動後の復旧・長時間稼働は未検証です。
+
+CI runs 35 Python tests, eight CLI cases and 16 synthetic communication cases using the built device libraries. Coverage includes Linux/BSD IPv4 and IPv6, short input, empty data, unsupported families and oversized input, plus all 256 BSD length-byte values for both formats.
+
+The generated production C++ 2FA methods connect to a localhost HTTP server for 12 cases: trusted-device/SMS success, 401/503, failure before prompting, verification failure, missing PE-token and related boundaries. Tests also check the updated User-Agent and UTC timestamp. They contact no Apple service and do not establish successful SMS delivery or live authentication. Unknown-error regressions use the generated production headers.
+
+Signing, GSA connection separation, JSON request framing/length, USB transfers, Bonjour, the full amd64 build and the extracted-installer test on Debian 13 continue. The installer checks that the executable version matches its own version in addition to verifying checksums. Service activation is simulated. Physical-device operation, Apple sign-in, SMS delivery, full-host reboot recovery and long-duration operation remain unverified.
+
+## 以前の版 / Earlier versions
+
+v0.1.3 の CI では Python 34件、ネイティブ通信9ケース、BSD コピー長512通りを試験します。アダプター試験を削除し、旧バージョンの準備状態を拒否する試験1件を追加しました。C++、署名、GSA、要求受信、CLI 6ケース、amd64 ビルド、Debian 13 での展開済みインストーラー試験も実行します。インストーラー試験はアダプターが配布・有効化されないことと、直接接続のポート設定も確認します。通信試験は模擬サーバー、サービス起動は記録用の模擬処理です。実機の iPhone 更新・Apple ログイン・ホスト再起動後の復旧は未検証です。[方式と出典](fork-review.md)を参照してください。
 
 For v0.1.3, CI runs 34 Python tests, nine native communication cases and 512 BSD copy-length assertions. Adapter tests are removed and one cross-version preparation guard test is added. C++, signing, GSA, request handling, six CLI cases, the amd64 build and an extracted-installer test on Debian 13 also run. The installer test checks that the adapter is neither distributed nor enabled and verifies the direct-connection port settings. Communication uses synthetic servers; service activation is recorded by a stub. Physical iPhone refresh, live Apple sign-in and full-host reboot recovery remain unverified. See [methods and sources](fork-review.md).
 
@@ -12,7 +28,7 @@ v0.1.1 の CI には、署名の暗号学的検証と完全なハッシュの確
 
 For v0.1.1, CI additionally checks cryptographic signatures, full agility hashes, separate GSA TCP connections and the TLS-validation setting, using a synthetic app, disposable test identity and local server. The [fork review](fork-review.md) describes methods and limits. That version had 34 Python regressions and six CLI cases.
 
-## 日本語
+### v0.1.0 — 日本語
 
 このプレビューでは、iPhone を使わずに実施できる検証を対象とします。Python の通信・復旧・移行・設定テスト、C++ の UTC / routing info テスト、ソースからの amd64 ビルド、生成された実行ファイルの CLI テストを CI で実行します。
 
@@ -24,11 +40,11 @@ v0.1.0 で完了した検証（履歴）:
 - 配布アーカイブを展開し、Debian 13 コンテナで実際のパッケージ導入、バイナリ取得・チェックサム確認、Docker イメージ取得、設定生成、systemd unit の構文検査。
 - Git 管理対象ファイルの簡易プライバシースキャン（検出0件）。網羅的な秘密情報検査ではありません。
 
-インストーラ試験の `systemctl` 操作は記録用の代替処理です。端末情報も架空の値を使用しています。サービスを実際に起動した試験、実ペアリングの試験、クリーンな実機への導入試験ではありません。
+インストーラー試験の `systemctl` 操作は記録用の代替処理です。端末情報も架空の値を使用しています。サービスを実際に起動した試験、実ペアリングの試験、クリーンな実機への導入試験ではありません。
 
 iPhone での署名・インストール・更新、実機への新規セットアップ、USB 再接続、ホスト再起動後の復旧、長時間稼働は未検証です。過去の netmuxd 再登録成功例は旧バイナリの結果であり、この版の成功として扱いません。既存サーバーの稼働設定と認証状態は保持しています。
 
-## English
+### v0.1.0 — English
 
 This preview focuses on checks that need no iPhone. CI runs Python protocol, recovery, migration and configuration tests; C++ UTC/routing-info tests; an amd64 build from source; and CLI tests against the resulting executable.
 

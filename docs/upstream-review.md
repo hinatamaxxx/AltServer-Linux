@@ -1,8 +1,8 @@
 # 公式実装の調査と取り込み方針 / Official-source review and adoption policy
 
-確認日 / Checked: 2026-09-28. これはソース調査であり、実機検証や新しい機能の実装完了を意味しません。
+確認日 / Checked: 2026-09-28. v0.2.0 の取り込み状況です。実機検証の結果ではありません。
 
-This is a source review, not device validation or a claim that new features have been implemented.
+This records source adoption for v0.2.0, not physical-device validation.
 
 ## 日本語
 
@@ -19,9 +19,9 @@ This is a source review, not device validation or a claim that new features have
 | 公式の実装 | このフォークでの扱い |
 | --- | --- |
 | Windows 1.7.4 の ldid 更新 | 取り込み済み。`ldid.cpp` と `ldid.hpp` の Git blob は公式 1.7.4 と一致。Linux 用の変換は別途適用されています。 |
-| [AltSign PR #52](https://github.com/rileytestut/AltSign/pull/52): GSA 要求ごとの接続分離 | 2026-09-08 に `notarized` へマージ済み。[公式 Windows の対応コミット](https://github.com/rileytestut/AltServer-Windows/commit/5eb3509)も確認。C++ 側の接続分離は取り込み済み。ただし、PR 内の HTTP 5xx エラー処理まで同等とは主張しません。 |
-| [AltSign の 2FA User-Agent 更新](https://github.com/rileytestut/AltSign/commit/468313b6b718e85cdad1fc2c8ba4ab551db897aa)、HTTP エラーの扱い | 現在の C++ では通常の GSA 要求は新しい User-Agent、2FA は旧 `Xcode` のまま。今後の移植候補です。2FA・エラー伝達をまとめて試験する必要があります。 |
-| Windows の大文字を含む Apple ID 正規化、SMS 2FA、詳細なエラー体系 | 現在の古い C++ 基盤との差分を確認。未移植です。公式 Windows ソース全体と同等の機能とは扱いません。 |
+| [AltSign PR #52](https://github.com/rileytestut/AltSign/pull/52): GSA 要求ごとの接続分離 | [公式 Windows の対応コミット](https://github.com/rileytestut/AltServer-Windows/commit/5eb3509)を含む C++ 基盤へ更新。要求ごとのクライアント生成と HTTP 5xx の扱いを取り込み、Linux では TLS 証明書検証を有効にします。 |
+| [AltSign の 2FA User-Agent 更新](https://github.com/rileytestut/AltSign/commit/468313b6b718e85cdad1fc2c8ba4ab551db897aa)、HTTP エラーの扱い | C++ の通常認証・2FA に共通の User-Agent を適用。2FA のコード要求前・応答解析前に HTTP エラーを判定します。認証データ・トークンのデバッグ出力も除去しました。 |
+| Windows の大文字を含む Apple ID 正規化、SMS 2FA、詳細なエラー体系 | 公式 C++ 基盤に含まれる実装を採用。Windows 固有の UI は Linux 向けに調整しています。Apple への実ログイン、SMS 到着、実機動作は未検証です。 |
 | macOS の AnisetteKit とライブラリ取得 | Swift/macOS 側の実装として参照。Linux の Docker Anisette をそのまま置き換えず、現在の永続状態を保持します。 |
 
 ### 他リポジトリを参考にする方針
@@ -30,7 +30,7 @@ This is a source review, not device validation or a claim that new features have
 
 直接のフォーク元、コードの取り込み元、設計だけ参考にした実装を区別します。コードを取り込む際は利用条件と著作権表示を確認・維持し、URL・コミット・目的・ローカル変更・試験を記録します。依存バージョンを固定し、上流に同等修正が入った際は独自差分を減らします。
 
-現状は AltServer-Windows と libimobiledevice の2つのサブモジュールが他者フォークを参照しています。固定コミットと試験はありますが、保守対象が増えている点は残ります。今回の資料更新では参照先や実行コードをさらに変更していません。AltKeeper は要求長の検証方法を参考にしただけで、Rust サーバーや追加の実行依存は導入していません。詳細な出典は[フォーク調査](fork-review.md)を参照してください。
+v0.2.0 では AltServer-Windows と libimobiledevice の参照先を公式リポジトリへ戻しました。libimobiledevice 1.4.0、libusbmuxd 2.1.1、libplist 2.7.0、libimobiledevice-glue 1.3.2 のコミットを固定しています。Linux/BSD アドレスの検証・正規化は libusbmuxd の入力部分だけに置き、公式 libimobiledevice は改変せずビルドします。常駐アダプターは不要です。AltKeeper は要求長の検証方法を参考にしただけで、Rust サーバーや追加の実行依存は導入していません。過去の出典は[フォーク調査](fork-review.md)、更新時の注意点は[保守手順](maintenance.md)を参照してください。
 
 ## English
 
@@ -47,9 +47,9 @@ This is a source review, not device validation or a claim that new features have
 | Official implementation | Status in this fork |
 | --- | --- |
 | Windows 1.7.4 ldid update | Already adopted. Git blobs for `ldid.cpp` and `ldid.hpp` match official 1.7.4; Linux transformations are applied separately. |
-| [AltSign PR #52](https://github.com/rileytestut/AltSign/pull/52): separate connections per GSA request | Merged into `notarized` on September 8, 2026. The [corresponding official Windows commit](https://github.com/rileytestut/AltServer-Windows/commit/5eb3509) was also reviewed. The C++ connection change is adopted; this does not claim equivalent HTTP 5xx error reporting from the same PR. |
-| [AltSign 2FA User-Agent update](https://github.com/rileytestut/AltSign/commit/468313b6b718e85cdad1fc2c8ba4ab551db897aa) and HTTP error handling | Our regular C++ GSA requests use the modern User-Agent, while 2FA still uses `Xcode`. These are candidates for a future port requiring combined 2FA and error-propagation tests. |
-| Windows mixed-case Apple ID normalization, SMS 2FA and richer errors | Differences from our older C++ base were reviewed, but these features are not ported. This fork does not provide full parity with current official Windows source. |
+| [AltSign PR #52](https://github.com/rileytestut/AltSign/pull/52): separate connections per GSA request | The updated C++ base includes the [official Windows commit](https://github.com/rileytestut/AltServer-Windows/commit/5eb3509), with per-request clients and HTTP 5xx handling. TLS certificate validation is enabled on Linux. |
+| [AltSign 2FA User-Agent update](https://github.com/rileytestut/AltSign/commit/468313b6b718e85cdad1fc2c8ba4ab551db897aa) and HTTP error handling | A shared User-Agent is applied to C++ authentication and 2FA. HTTP errors are checked before requesting a code or parsing a response. Authentication data and token debug logging are removed. |
+| Windows mixed-case Apple ID normalization, SMS 2FA and richer errors | Adopted with the official C++ base, adapting Windows UI for Linux. Live Apple sign-in, SMS delivery and physical-device behavior remain unverified. |
 | macOS AnisetteKit and library downloads | Reviewed as a Swift/macOS implementation. It does not directly replace Docker Anisette on Linux; existing persistent state is retained. |
 
 ### Policy for other repositories
@@ -58,4 +58,4 @@ Selecting fixes from other forks is compatible with maintaining a modified upstr
 
 We distinguish the direct fork parent, imported code and design references. We check and preserve applicable licensing and copyright notices for imported code, and record the URL, commit, purpose, local adaptations and tests. We pin dependencies and reduce local changes when upstream provides equivalent fixes.
 
-Currently, two submodules—AltServer-Windows and libimobiledevice—point to third-party forks. Pinned commits and tests help, but the additional maintenance cost remains. This documentation update changes neither dependency references nor runtime code. AltKeeper informed request-length validation; its Rust server and additional runtime dependencies were not imported. See the [fork review](fork-review.md) for detailed attribution.
+In v0.2.0, AltServer-Windows and libimobiledevice point back to official repositories. Commits are pinned for libimobiledevice 1.4.0, libusbmuxd 2.1.1, libplist 2.7.0 and libimobiledevice-glue 1.3.2. Linux/BSD address validation and normalization live only at the libusbmuxd input boundary; official libimobiledevice is built unchanged. No persistent adapter is required. AltKeeper informed request-length validation; its Rust server and additional runtime dependencies were not imported. See the [fork review](fork-review.md) for historical attribution and [maintenance guide](maintenance.md) for update procedures.
