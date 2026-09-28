@@ -2,6 +2,7 @@
 """Two-stage Debian setup. Preparation never needs a phone or activates AltServer."""
 import argparse
 import hashlib
+import json
 import ipaddress
 import os
 from pathlib import Path
@@ -86,6 +87,12 @@ def preflight():
 def prepare():
     # Existing installs must not lose their configuration, binaries or identity.
     if ENV.exists() or (HOME / 'bin/AltServer').exists():
+        if not ENV.exists() and (HOME / 'setup-state.json').is_file():
+            state = json.loads((HOME / 'setup-state.json').read_text())
+            if state.get('phase') == 'prepared' and all((HOME / p).is_file() for p in
+                                                       ('bin/AltServer', 'bin/netmuxd', 'anisette-image')):
+                print('Already prepared. Connect/trust an iPhone later, then use --configure.')
+                return
         raise ValueError('Existing installation detected; see docs/setup.md before migrating')
     packages = ['ca-certificates', 'curl', 'avahi-daemon', 'avahi-utils',
                 'libavahi-compat-libdnssd1', 'usbmuxd', 'libimobiledevice-utils',
@@ -128,7 +135,6 @@ def prepare():
             run(str(binary), '--help', stdout=subprocess.DEVNULL, timeout=15)
         run('docker', 'pull', 'dadoum/anisette-v3-server:latest')
         # Record the immutable digest actually pulled; later starts never track latest.
-        import json
         image = json.loads(output('docker', 'image', 'inspect', 'dadoum/anisette-v3-server:latest'))[0]
         digests = [v for v in image.get('RepoDigests', []) if v.startswith('dadoum/anisette-v3-server@sha256:')]
         if not digests:
@@ -138,19 +144,30 @@ def prepare():
         atomic_write(HOME / 'bin/AltServer', alt.read_bytes(), 0o755)
         atomic_write(HOME / 'bin/netmuxd', (stage / 'netmuxd').read_bytes(), 0o755)
         atomic_write(HOME / 'anisette-image', (digests[0] + '\n').encode())
+        atomic_write(HOME / 'setup-state.json', json.dumps(dict(version=TAG, phase='prepared')).encode())
     print('Prepared. No iPhone required; AltServer has not been activated.')
     print('Later: connect and trust one iPhone by USB, then sudo sh install.sh --configure')
 
 
 def configure():
     if ENV.exists():
-        raise ValueError('Existing configuration retained; automatic overwrite is disabled')
+        state_path = HOME / 'setup-state.json'
+        state = json.loads(state_path.read_text()) if state_path.is_file() else {}
+        digest = hashlib.sha256(ENV.read_bytes()).hexdigest()
+        if state.get('configuration_sha256') != digest:
+            raise ValueError('Existing configuration retained; automatic overwrite is disabled')
+        if state.get('phase') == 'configured':
+            print('Already configured. Use systemctl or the healthcheck to inspect services.')
+            return
+        if state.get('phase') != 'configuring':
+            raise ValueError('Unknown setup state; configuration retained')
+        activate(state)
+        return
     for path in ('bin/AltServer', 'bin/netmuxd', 'anisette-image'):
         if not (HOME / path).is_file():
             raise ValueError('Run --prepare first')
     host = os.environ.get('ALTSERVER_HOST_IP', '')
     if not host:
-        import json
         routes = json.loads(output('ip', '-j', 'route', 'get', '1.1.1.1'))
         host = routes[0].get('prefsrc', '')
     udid, mac = os.environ.get('IPHONE_UDID', ''), os.environ.get('IPHONE_WIFI_MAC', '')
@@ -173,13 +190,22 @@ def configure():
                   NETMUXD_REGISTER_MODE='api', ALTSERVER_NO_SUBSCRIBE='1',
                   ALTSERVER_ANISETTE_SERVER='http://127.0.0.1:6969', ANISETTE_URL='http://127.0.0.1:6969/',
                   ANISETTE_DOCKER_IMAGE=image, ANISETTE_STATE_DIR='/var/lib/altserver-native/anisette')
-    atomic_write(ENV, ''.join(f'{k}={shlex.quote(v)}\n' for k, v in values.items()).encode())
+    content = ''.join(f'{k}={shlex.quote(v)}\n' for k, v in values.items()).encode()
+    state = dict(version=TAG, phase='configuring', configuration_sha256=hashlib.sha256(content).hexdigest())
+    atomic_write(HOME / 'setup-state.json', json.dumps(state).encode())
+    atomic_write(ENV, content)
+    activate(state)
+
+
+def activate(state):
     env = dict(os.environ, ENV_FILE=str(ENV))
     run('sh', str(ROOT / 'scripts/install-helper-scripts.sh'), env=env)
     run('sh', str(ROOT / 'scripts/install-systemd-units.sh'), env=env)
     run('systemctl', 'start', 'altserver-anisette-docker.service', 'altserver-native-netmuxd.service',
         'altserver-netmux-compat.service', 'iphone-mobdev-address.service', 'iphone-mobdev-service.service',
         'altserver-native.service', 'altserver-native-healthcheck.timer')
+    state['phase'] = 'configured'
+    atomic_write(HOME / 'setup-state.json', json.dumps(state).encode())
     print('Configured. Run sudo /usr/local/sbin/altserver-native-healthcheck to inspect readiness.')
     print('iPhone refresh and Apple sign-in still require verification in AltStore.')
 
@@ -191,7 +217,13 @@ def main():
     group.add_argument('--configure', action='store_true', help='pairing must already exist; activate services')
     args = parser.parse_args()
     preflight()
-    configure() if args.configure else prepare()
+    import fcntl
+    with open('/run/lock/altserver-setup.lock', 'w') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError('Another setup process is running')
+        configure() if args.configure else prepare()
 
 
 if __name__ == '__main__':

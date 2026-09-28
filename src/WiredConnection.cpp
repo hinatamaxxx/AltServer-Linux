@@ -47,7 +47,7 @@ pplx::task<std::vector<unsigned char>> WiredConnection::ReceiveData(int expected
 		std::vector<unsigned char> receivedData;
 		receivedData.reserve(expectedSize);
 
-		while (receivedData.size() < expectedSize)
+		while (receivedData.size() < static_cast<size_t>(expectedSize))
 		{
 			uint32_t size = std::min((uint32_t)4096, (uint32_t)expectedSize - (uint32_t)receivedData.size());
 

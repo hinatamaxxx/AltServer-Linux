@@ -35,6 +35,10 @@ jobs:
         run: python3 tools/check-cli.py dist/AltServer-x86_64
       - name: Create install bundle
         run: sh scripts/package.sh
+      - name: Extracted installer on Debian 13
+        run: |
+          docker run --rm -v "$PWD:/source:ro" -v /var/run/docker.sock:/var/run/docker.sock \
+            debian:13-slim sh /source/tests/install-smoke.sh
       - uses: actions/upload-artifact@v4
         with:
           name: altserver-linux-amd64

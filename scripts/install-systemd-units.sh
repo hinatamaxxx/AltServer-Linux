@@ -18,8 +18,8 @@ install -d /etc/systemd/system/altserver-native-netmuxd.service.d
 cat >/etc/systemd/system/altserver-native-netmuxd.service <<UNIT
 [Unit]
 Description=AltServer native netmuxd
-After=network-online.target avahi-daemon.service
-Wants=network-online.target avahi-daemon.service
+After=network-online.target avahi-daemon.service usbmuxd.service
+Wants=network-online.target avahi-daemon.service usbmuxd.service
 
 [Service]
 Type=simple

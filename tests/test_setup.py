@@ -1,5 +1,6 @@
 import importlib.util
 import hashlib
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -13,6 +14,37 @@ spec.loader.exec_module(setup)
 
 
 class SetupTests(unittest.TestCase):
+    def test_interrupted_configuration_can_resume_without_device_detection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            env = home / 'config'
+            env.write_bytes(b'fixture configuration')
+            state = dict(phase='configuring', configuration_sha256=hashlib.sha256(env.read_bytes()).hexdigest())
+            (home / 'setup-state.json').write_text(json.dumps(state))
+            with patch.object(setup, 'HOME', home), patch.object(setup, 'ENV', env), \
+                 patch.object(setup, 'activate') as activate, patch.object(setup, 'output') as output:
+                setup.configure()
+                activate.assert_called_once_with(state)
+                output.assert_not_called()
+            env.write_bytes(b'changed by user')
+            with patch.object(setup, 'HOME', home), patch.object(setup, 'ENV', env), \
+                 patch.object(setup, 'activate') as activate:
+                with self.assertRaises(ValueError):
+                    setup.configure()
+                activate.assert_not_called()
+
+    def test_repeat_preparation_is_safe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            (home / 'bin').mkdir()
+            for name in ('bin/AltServer', 'bin/netmuxd', 'anisette-image'):
+                (home / name).write_text('fixture')
+            (home / 'setup-state.json').write_text(json.dumps(dict(phase='prepared')))
+            with patch.object(setup, 'HOME', home), patch.object(setup, 'ENV', home / 'absent'), \
+                 patch.object(setup, 'run') as run:
+                setup.prepare()
+                run.assert_not_called()
+
     def test_shell_metacharacters_and_invalid_addresses_rejected(self):
         udid = '0' * 40
         mac = ':'.join(['ab'] * 6)
