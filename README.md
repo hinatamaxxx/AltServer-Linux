@@ -4,6 +4,10 @@
 
 [NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux) のフォークです。本体の不具合修正と、[altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover) の復旧機能をまとめています。
 
+直接のフォーク元は **NyaMisty の非公式 Linux 移植版**です。AltStore チームが提供する公式 Linux 版ではありません。公式 AltServer のコードは [Windows 版](https://github.com/rileytestut/AltServer-Windows)と [macOS 版（AltStore 内）](https://github.com/altstoreio/AltStore/tree/classic/AltServer)で確認できます。
+
+[取り込み元と URL](docs/provenance.md)・[公式実装の調査と取り込み方針](docs/upstream-review.md)を公開しています。新しいタブで開くリンクは、[リンク一覧 HTML](docs/sources.html)をダウンロードしてブラウザーで開くと利用できます。GitHub 上の README では新しいタブを強制できないため、Ctrl+クリック（Mac は Command+クリック）を使ってください。
+
 AltServer、公式 netmuxd v0.4.3、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上で動作し、systemd が起動と監視を担当します。
 
 ## 簡単な導入

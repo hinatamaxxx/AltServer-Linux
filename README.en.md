@@ -4,6 +4,10 @@
 
 A fork of [NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux), combining fixes in AltServer itself with the recovery tools from [altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover).
 
+The direct parent is **NyaMisty's unofficial Linux port**, not an official Linux release from the AltStore team. Official AltServer source is available for [Windows](https://github.com/rileytestut/AltServer-Windows) and [macOS (inside AltStore)](https://github.com/altstoreio/AltStore/tree/classic/AltServer).
+
+See [sources and URLs](docs/provenance.md) and the [official-source review and adoption policy](docs/upstream-review.md). Download and open the [HTML source directory](docs/sources.html) in a browser for links that open in a new tab. GitHub README links cannot force this behavior; use Ctrl+click (Command+click on Mac).
+
 Setup installs AltServer, official netmuxd v0.4.3, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host; Anisette runs in Docker. systemd starts and monitors the services.
 
 ## Quick start

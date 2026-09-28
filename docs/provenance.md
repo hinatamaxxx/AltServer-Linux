@@ -1,5 +1,33 @@
 # 取り込み元 / Provenance
 
+## フォーク元と参照先 / Parent and source URLs
+
+直接のフォーク元は NyaMisty の非公式 Linux 移植版です。公式 AltServer、他者フォーク、設計上の参考資料を以下で区別します。
+
+The direct parent is NyaMisty's unofficial Linux port; official source, third-party forks and design references are distinguished below.
+
+| 役割 / Role | Repository URL | 使用箇所 / Use |
+| --- | --- | --- |
+| 直接のフォーク元 / Direct parent | [https://github.com/NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux) | Linux 基盤・Git 履歴 / Linux base and history |
+| 公式 Windows / Official Windows | [https://github.com/rileytestut/AltServer-Windows](https://github.com/rileytestut/AltServer-Windows) | 元の C++ 実装、1.7.4 の ldid / Original C++ implementation and 1.7.4 ldid |
+| 公式 macOS / Official macOS | [https://github.com/altstoreio/AltStore](https://github.com/altstoreio/AltStore) | AltServer ディレクトリを調査 / Reviewed the AltServer directory |
+| 公式認証ライブラリ / Official authentication library | [https://github.com/rileytestut/AltSign](https://github.com/rileytestut/AltSign) | GSA・2FA の比較 / GSA and 2FA comparison |
+| 依存先のフォーク / Dependency fork | [https://github.com/jaakkopalvaila/AltServer-Windows](https://github.com/jaakkopalvaila/AltServer-Windows) | ldid・GSA の Linux 向け取り込み元 / Imported ldid and GSA changes for Linux |
+| 依存先のフォーク / Dependency fork | [https://github.com/jaakkopalvaila/libimobiledevice](https://github.com/jaakkopalvaila/libimobiledevice) | Linux/BSD アドレス対応 / Linux/BSD address support |
+| 部分的な修正の参考 / Targeted code reference | [https://github.com/Ben-Diehlci/altserver-linux](https://github.com/Ben-Diehlci/altserver-linux) | Bonjour 引数・型 / Bonjour arguments and types |
+| 設計の参考 / Design reference | [https://github.com/BartolomeoRusso9/altkeeper](https://github.com/BartolomeoRusso9/altkeeper) | 要求長の検証・実行依存なし / Request-length validation; no runtime dependency |
+| 復旧機能の取り込み元 / Imported recovery tools | [https://github.com/hinatamaxxx/altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover) | 監視・復旧スクリプト / Monitoring and recovery scripts |
+| 公式配布物 / Upstream distribution | [https://github.com/jkcoxson/netmuxd](https://github.com/jkcoxson/netmuxd) | 改変なし / Unmodified |
+| 公式配布物 / Upstream distribution | [https://github.com/Dadoum/anisette-v3-server](https://github.com/Dadoum/anisette-v3-server) | Docker イメージ / Docker image |
+
+固定コミットと変更内容は以下および[フォーク調査](fork-review.md)を、現在の公式実装との比較は[上流調査](upstream-review.md)を参照してください。
+
+Pinned commits and adaptations are documented below and in the [fork review](fork-review.md); see the [official-source review](upstream-review.md) for current comparisons.
+
+[リンク一覧 HTML](sources.html)をダウンロードしてブラウザーで開くと、リンクは新しいタブで開きます。GitHub の Markdown 表示ではリンク先タブを強制できません。
+
+Download and open the [HTML source directory](sources.html) in a browser for new-tab links; GitHub's Markdown rendering does not allow forcing the target tab.
+
 ## English
 
 - Upstream: `NyaMisty/AltServer-Linux`, branch `new`, base `7876451`. Git history and AGPL-3.0 are retained. In v0.1.1, `upstream_repo` is repinned to `jaakkopalvaila/AltServer-Windows` at `dae9501abad10a4f008cc8a73138310679decd81`. In v0.1.3, `libraries/libimobiledevice` is pinned to `jaakkopalvaila/libimobiledevice` at `3ab93704206b11cdf9485db1f49e62d57c1d4dce`, with a local copy-length correction; other submodule commits are unchanged. See [fork review](fork-review.md) for exact sources and local adaptations.

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AltServer-Linux — フォーク元・参照先 / Source directory</title>
+<style>
+body{font:16px/1.7 system-ui,sans-serif;color:#172b3a;background:#f5f7fa;max-width:1200px;margin:40px auto;padding:0 24px}
+h1{font-size:1.65rem;line-height:1.4}p{max-width:80ch}.table{overflow-x:auto;background:white;border:1px solid #d8e0e7;border-radius:12px}
+table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:14px 18px;border-bottom:1px solid #e5eaf0;vertical-align:top}th{background:#e8eff5}a{color:#075ba3;overflow-wrap:anywhere}a:focus-visible{outline:3px solid #bf6800;outline-offset:3px}td:first-child{min-width:180px}
+</style>
+<main><h1>フォーク元・参照先<br><span lang="en">AltServer-Linux source directory</span></h1>
+<p>直接のフォーク元は NyaMisty の非公式 Linux 移植版です。公式実装、他者フォーク、設計の参考資料を区別しています。リンクは新しいタブで開きます。</p>
+<p lang="en">The direct parent is NyaMisty's unofficial Linux port. Official source, third-party forks and design references are listed separately. Links open in a new tab.</p>
+<div class="table"><table><thead><tr><th scope="col">役割 / Role</th><th scope="col">Repository URL</th><th scope="col">使用箇所 / Use</th></tr></thead><tbody>
+<tr><td>直接のフォーク元 / Direct parent</td><td><a href="https://github.com/NyaMisty/AltServer-Linux" target="_blank" rel="noopener noreferrer">https://github.com/NyaMisty/AltServer-Linux</a></td><td>Linux 基盤・Git 履歴 / Linux base and history</td></tr>
+<tr><td>公式 Windows / Official Windows</td><td><a href="https://github.com/rileytestut/AltServer-Windows" target="_blank" rel="noopener noreferrer">https://github.com/rileytestut/AltServer-Windows</a></td><td>元の C++ 実装、1.7.4 の ldid / Original C++ implementation and 1.7.4 ldid</td></tr>
+<tr><td>公式 macOS / Official macOS</td><td><a href="https://github.com/altstoreio/AltStore" target="_blank" rel="noopener noreferrer">https://github.com/altstoreio/AltStore</a></td><td>AltServer ディレクトリを調査 / Reviewed the AltServer directory</td></tr>
+<tr><td>公式認証ライブラリ / Official authentication library</td><td><a href="https://github.com/rileytestut/AltSign" target="_blank" rel="noopener noreferrer">https://github.com/rileytestut/AltSign</a></td><td>GSA・2FA の比較 / GSA and 2FA comparison</td></tr>
+<tr><td>依存先のフォーク / Dependency fork</td><td><a href="https://github.com/jaakkopalvaila/AltServer-Windows" target="_blank" rel="noopener noreferrer">https://github.com/jaakkopalvaila/AltServer-Windows</a></td><td>ldid・GSA の Linux 向け取り込み元 / Imported ldid and GSA changes for Linux</td></tr>
+<tr><td>依存先のフォーク / Dependency fork</td><td><a href="https://github.com/jaakkopalvaila/libimobiledevice" target="_blank" rel="noopener noreferrer">https://github.com/jaakkopalvaila/libimobiledevice</a></td><td>Linux/BSD アドレス対応 / Linux/BSD address support</td></tr>
+<tr><td>部分的な修正の参考 / Targeted code reference</td><td><a href="https://github.com/Ben-Diehlci/altserver-linux" target="_blank" rel="noopener noreferrer">https://github.com/Ben-Diehlci/altserver-linux</a></td><td>Bonjour 引数・型 / Bonjour arguments and types</td></tr>
+<tr><td>設計の参考 / Design reference</td><td><a href="https://github.com/BartolomeoRusso9/altkeeper" target="_blank" rel="noopener noreferrer">https://github.com/BartolomeoRusso9/altkeeper</a></td><td>要求長の検証・実行依存なし / Request-length validation; no runtime dependency</td></tr>
+<tr><td>復旧機能の取り込み元 / Imported recovery tools</td><td><a href="https://github.com/hinatamaxxx/altserver-linux-native-autorecover" target="_blank" rel="noopener noreferrer">https://github.com/hinatamaxxx/altserver-linux-native-autorecover</a></td><td>監視・復旧スクリプト / Monitoring and recovery scripts</td></tr>
+<tr><td>公式配布物 / Upstream distribution</td><td><a href="https://github.com/jkcoxson/netmuxd" target="_blank" rel="noopener noreferrer">https://github.com/jkcoxson/netmuxd</a></td><td>改変なし / Unmodified</td></tr>
+<tr><td>公式配布物 / Upstream distribution</td><td><a href="https://github.com/Dadoum/anisette-v3-server" target="_blank" rel="noopener noreferrer">https://github.com/Dadoum/anisette-v3-server</a></td><td>Docker イメージ / Docker image</td></tr>
+</tbody></table></div>
+<p>詳細なコミットと採用理由 / Commits and decisions:
+<a href="https://github.com/hinatamaxxx/AltServer-Linux/blob/new/docs/provenance.md" target="_blank" rel="noopener noreferrer">Provenance</a> ·
+<a href="https://github.com/hinatamaxxx/AltServer-Linux/blob/new/docs/upstream-review.md" target="_blank" rel="noopener noreferrer">公式実装の調査 / Official-source review</a></p>
+</main></html>
