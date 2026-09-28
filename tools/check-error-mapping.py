@@ -10,6 +10,9 @@ with tempfile.TemporaryDirectory() as directory:
                     '-Ibuild/AltServer_patched', '-Ibuild/AltSign_patched', '-Ishims',
                     '-Ilibraries/libimobiledevice/include', '-Ilibraries/libplist/include',
                     'tests/error_mapping.cpp', 'build/objs/AltSign_patched/Error.cpp.o',
+                    'build/objs/AltServer_patched/ConnectionError.cpp.o',
+                    'build/objs/AltServer_patched/ServerError.cpp.o',
+                    'build/objs/shims/windows_shim.cpp.o',
                     'build/objs/AltSign_patched/Device.cpp.o', 'build/libplist.a',
                     '-lcpprest', '-lssl', '-lcrypto', '-lpthread', '-lm', '-o', executable], check=True)
     subprocess.run([executable], check=True, timeout=15)
