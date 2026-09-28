@@ -40,7 +40,8 @@ class Handler(socketserver.BaseRequestHandler):
 with tempfile.TemporaryDirectory() as directory:
     root = Path(directory)
     executable = root / 'test-native'
-    subprocess.run(['gcc', '-Ilibraries/libimobiledevice/include', 'tests/native_netmux.c',
+    subprocess.run(['gcc', '-Ilibraries/libimobiledevice/include', '-Ilibraries/libplist/include',
+                    'tests/native_netmux.c',
                     'build/libimobiledevice.a', 'build/libplist.a', '-lssl', '-lcrypto',
                     '-lpthread', '-lm', '-luuid', '-o', str(executable)], check=True)
     # Exercise the exact generated copy-size helper for every BSD sa_len value.
