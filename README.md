@@ -39,6 +39,8 @@ sudo /usr/local/sbin/altserver-native-healthcheck
 
 ## Web管理画面（オプション）
 
+管理画面のサポート対象は **Tailscale経由のHTTPS＋パスキー認証**です。サーバーとアクセスするPCの両方でTailscaleを利用してください。端末への独自CA証明書のインストールは不要です。TailscaleなしでのLAN公開やインターネットへの一般公開はサポートしません。
+
 サービス状態・iPhone接続・診断ログ・復旧操作をまとめた、日本語／英語の画面を追加できます。
 
 ```sh

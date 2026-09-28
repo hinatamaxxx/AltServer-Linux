@@ -39,6 +39,8 @@ Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release a
 
 ## Optional web console
 
+The supported console configuration is **HTTPS over Tailscale with passkey authentication**. Use Tailscale on both the server and the PC accessing it. No custom CA certificate installation is required on the client. Direct LAN access without Tailscale and public internet exposure are unsupported.
+
 Add a Japanese/English dashboard for service status, iPhone connectivity, diagnostic logs and recovery controls:
 
 ```sh

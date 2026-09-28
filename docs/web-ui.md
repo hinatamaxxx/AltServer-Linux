@@ -2,6 +2,8 @@
 
 ## 日本語
 
+サポート対象はTailscale経由のHTTPSとパスキー認証です。サーバーとアクセスするPCでTailscaleを利用してください。独自CA証明書を端末へ追加する必要はありません。TailscaleなしでのLAN公開・一般公開用の導入手順は提供しません。この条件は管理画面のもので、AltStoreのWi-Fi更新にTailscaleを必須とするものではありません。
+
 ブラウザーでサービスの状態、設定済みiPhoneの接続、診断ログを確認できます。接続診断、既存の自動復旧処理の手動実行、サービスごとの再起動に対応します。アプリのリフレッシュは引き続きiPhoneのAltStore Classicから行います。
 
 AltServer設定済みで、サーバーと利用端末がTailscaleに接続している場合、次を実行します。
@@ -38,6 +40,8 @@ sudo systemctl start altserver-webui
 見た目だけ試す場合は `python3 web/server.py --demo` を実行し、ループバックURLでキー `demo` を使います。表示データと操作結果はすべて架空です。
 
 ## English
+
+The supported configuration uses HTTPS over Tailscale with passkey authentication. Use Tailscale on the server and the PC accessing the console. No custom CA certificate needs to be added to the client. Setup for direct LAN access without Tailscale or public internet exposure is not provided. This requirement applies to the console; it does not make Tailscale mandatory for AltStore Wi-Fi refresh.
 
 The optional console shows service status, the configured iPhone connection and diagnostic logs. It supports connection checks, manually running the existing recovery check, and restarting individual services. Continue refreshing apps from AltStore Classic on your iPhone.
 
