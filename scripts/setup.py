@@ -14,6 +14,7 @@ import subprocess
 import tarfile
 import tempfile
 import urllib.request
+import urllib.parse
 
 ROOT = Path(__file__).resolve().parents[1]
 HOME = Path('/opt/altserver-native')
@@ -22,9 +23,8 @@ TAG = (ROOT / 'VERSION').read_text().strip()
 if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', TAG):
     raise ValueError('Invalid setup VERSION')
 RELEASE = f'https://github.com/hinatamaxxx/AltServer-Linux/releases/download/{TAG}'
-NETMUX_URL = ('https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/'
-              'netmuxd-x86_64-unknown-linux-gnu.tar.gz')
-NETMUX_SHA = '85b6598284fc639f2a282584461d05e2090b79bdf3ec949d2a5e5d3dc655dde4'
+NETMUX_LATEST = 'https://api.github.com/repos/jkcoxson/netmuxd/releases/latest'
+NETMUX_ASSET = 'netmuxd-x86_64-unknown-linux-gnu.tar.gz'
 ANISETTE_IMAGE = 'dadoum/anisette-v3-server@sha256:1e20384985d3c49965f444bef39d627768dacc39ea0dca91f2a535edb7591ba3'
 
 
@@ -46,6 +46,31 @@ def verify(path, digest):
         raise ValueError('Invalid SHA-256 manifest')
     if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
         raise ValueError(f'Checksum mismatch: {path.name}')
+
+
+def latest_netmux_release():
+    request = urllib.request.Request(NETMUX_LATEST, headers={
+        'Accept': 'application/vnd.github+json', 'User-Agent': 'AltServer-Linux-setup/' + TAG})
+    with urllib.request.urlopen(request, timeout=60) as response:
+        data = response.read(1024 * 1024 + 1)
+    if len(data) > 1024 * 1024:
+        raise ValueError('netmuxd release metadata is too large')
+    release = json.loads(data)
+    if not isinstance(release, dict) or release.get('draft') is not False or release.get('prerelease') is not False:
+        raise ValueError('No public stable netmuxd release found')
+    version, assets = release.get('tag_name'), release.get('assets')
+    if not isinstance(version, str) or not version or not isinstance(assets, list):
+        raise ValueError('Invalid netmuxd release metadata')
+    matches = [a for a in assets if isinstance(a, dict) and a.get('name') == NETMUX_ASSET]
+    if len(matches) != 1:
+        raise ValueError('Latest netmuxd release has no unique Linux amd64 asset')
+    asset = matches[0]
+    url = ('https://github.com/jkcoxson/netmuxd/releases/download/'
+           + urllib.parse.quote(version, safe='') + '/' + NETMUX_ASSET)
+    digest = asset.get('digest')
+    if asset.get('browser_download_url') != url or not isinstance(digest, str) or not re.fullmatch(r'sha256:[0-9a-f]{64}', digest):
+        raise ValueError('Latest netmuxd asset has no valid upstream URL or SHA-256 digest')
+    return dict(version=version, url=url, sha256=digest.removeprefix('sha256:'))
 
 
 def verify_binary_version(path):
@@ -112,6 +137,9 @@ def prepare():
     run('apt-get', 'install', '-y', *packages,
         env=dict(os.environ, DEBIAN_FRONTEND='noninteractive'))
     run('systemctl', 'enable', '--now', 'docker.service', 'avahi-daemon.service')
+    # Resolve once per preparation, so the URL and digest refer to the same release.
+    netmux = latest_netmux_release()
+    print('Preparing netmuxd ' + netmux['version'] + ' (latest official release).')
     # Stage everything before creating the prepared installation directory.
     with tempfile.TemporaryDirectory(prefix='altserver-setup-') as tmp:
         stage = Path(tmp)
@@ -130,8 +158,8 @@ def prepare():
             raise ValueError('Release manifest has no unique AltServer checksum')
         verify(alt, matches[0])
         archive = stage / 'netmuxd.tar.gz'
-        download(NETMUX_URL, archive)
-        verify(archive, NETMUX_SHA)
+        download(netmux['url'], archive)
+        verify(archive, netmux['sha256'])
         with tarfile.open(archive) as tar:
             members = [m for m in tar.getmembers() if m.isfile() and Path(m.name).name == 'netmuxd']
             if len(members) != 1:
@@ -154,7 +182,7 @@ def prepare():
         atomic_write(HOME / 'bin/AltServer', alt.read_bytes(), 0o755)
         atomic_write(HOME / 'bin/netmuxd', (stage / 'netmuxd').read_bytes(), 0o755)
         atomic_write(HOME / 'anisette-image', (ANISETTE_IMAGE + '\n').encode())
-        atomic_write(HOME / 'setup-state.json', json.dumps(dict(version=TAG, phase='prepared')).encode())
+        atomic_write(HOME / 'setup-state.json', json.dumps(dict(version=TAG, phase='prepared', netmuxd=netmux)).encode())
     print('Prepared. No iPhone required; AltServer has not been activated.')
     print('Later: connect and trust one iPhone by USB, then sudo sh install.sh --configure')
 
@@ -205,7 +233,7 @@ def configure():
                   ALTSERVER_ANISETTE_SERVER='http://127.0.0.1:6969', ANISETTE_URL='http://127.0.0.1:6969/',
                   ANISETTE_DOCKER_IMAGE=image, ANISETTE_STATE_DIR='/var/lib/altserver-native/anisette')
     content = ''.join(f'{k}={shlex.quote(v)}\n' for k, v in values.items()).encode()
-    state = dict(version=TAG, phase='configuring', configuration_sha256=hashlib.sha256(content).hexdigest())
+    state.update(version=TAG, phase='configuring', configuration_sha256=hashlib.sha256(content).hexdigest())
     atomic_write(HOME / 'setup-state.json', json.dumps(state).encode())
     atomic_write(ENV, content)
     activate(state)

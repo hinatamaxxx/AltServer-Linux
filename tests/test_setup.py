@@ -1,11 +1,15 @@
 import importlib.util
+import copy
+import io
 import hashlib
 import json
 import os
 from pathlib import Path
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('setup', ROOT / 'scripts/setup.py')
@@ -14,6 +18,71 @@ spec.loader.exec_module(setup)
 
 
 class SetupTests(unittest.TestCase):
+    def release_fixture(self):
+        return dict(tag_name='v9.8.7', draft=False, prerelease=False, assets=[dict(
+            name=setup.NETMUX_ASSET, digest='sha256:' + 'a' * 64,
+            browser_download_url='https://github.com/jkcoxson/netmuxd/releases/download/v9.8.7/' + setup.NETMUX_ASSET)])
+
+    def test_latest_netmux_release_selects_future_version(self):
+        with patch.object(setup.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps(self.release_fixture()).encode())) as fetch:
+            release = setup.latest_netmux_release()
+        self.assertEqual(release['version'], 'v9.8.7')
+        self.assertEqual(release['sha256'], 'a' * 64)
+        self.assertEqual(fetch.call_args.args[0].full_url, setup.NETMUX_LATEST)
+        self.assertIn('/v9.8.7/', release['url'])
+
+    def test_latest_netmux_requires_matching_asset_and_digest(self):
+        base = self.release_fixture()
+        cases = []
+        for key, value in [('draft', True), ('prerelease', True), ('tag_name', ''), ('assets', []),
+                           ('assets', base['assets'] * 2), ('assets', None)]:
+            item = copy.deepcopy(base); item[key] = value; cases.append(item)
+        for key, value in [('digest', None), ('digest', 'sha256:broken'), ('digest', 'md5:' + 'a' * 64),
+                           ('browser_download_url', 'https://example.org/netmuxd.tar.gz'),
+                           ('browser_download_url', base['assets'][0]['browser_download_url'].replace('v9.8.7', 'v9.8.6')),
+                           ('name', 'netmuxd-aarch64-unknown-linux-gnu.tar.gz')]:
+            item = copy.deepcopy(base); item['assets'][0][key] = value; cases.append(item)
+        for item in cases + [[], None]:
+            with self.subTest(metadata=item), patch.object(setup.urllib.request, 'urlopen', return_value=io.BytesIO(json.dumps(item).encode())):
+                with self.assertRaises(ValueError): setup.latest_netmux_release()
+
+    def test_latest_netmux_api_failure_does_not_fall_back(self):
+        with patch.object(setup.urllib.request, 'urlopen', side_effect=HTTPError(setup.NETMUX_LATEST, 403, 'rate limited', {}, None)) as fetch:
+            with self.assertRaises(HTTPError): setup.latest_netmux_release()
+            self.assertEqual(fetch.call_count, 1)
+        for body in (b'not-json', b' ' * (1024 * 1024 + 1)):
+            with patch.object(setup.urllib.request, 'urlopen', return_value=io.BytesIO(body)):
+                with self.assertRaises(ValueError): setup.latest_netmux_release()
+
+    def test_prepare_verifies_and_records_resolved_netmux_release(self):
+        for corrupt in (False, True):
+            with self.subTest(corrupt=corrupt), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); dist = root / 'dist'; dist.mkdir()
+                (dist / 'AltServer-x86_64').write_bytes(b'altserver fixture')
+                digest = hashlib.sha256(b'altserver fixture').hexdigest()
+                (dist / 'SHA256SUMS').write_text(digest + '  AltServer-x86_64\n')
+                archive = root / 'fixture.tar.gz'
+                with tarfile.open(archive, 'w:gz') as tar:
+                    info = tarfile.TarInfo('netmuxd'); info.size = len(b'netmux fixture')
+                    tar.addfile(info, io.BytesIO(b'netmux fixture'))
+                release = dict(version='v9.8.7', url='https://github.com/jkcoxson/netmuxd/releases/download/v9.8.7/' + setup.NETMUX_ASSET,
+                               sha256='0' * 64 if corrupt else hashlib.sha256(archive.read_bytes()).hexdigest())
+                def download(url, dest):
+                    self.assertEqual(url, release['url']); dest.write_bytes(archive.read_bytes())
+                home = root / 'install'
+                with patch.object(setup, 'ROOT', root), patch.object(setup, 'HOME', home), \
+                     patch.object(setup, 'ENV', root / 'absent.env'), patch.object(setup, 'run'), \
+                     patch.object(setup, 'verify_binary_version'), patch.object(setup, 'latest_netmux_release', return_value=release), \
+                     patch.object(setup, 'download', side_effect=download), \
+                     patch.object(setup, 'output', return_value=json.dumps([dict(RepoDigests=[setup.ANISETTE_IMAGE])])):
+                    if corrupt:
+                        with self.assertRaisesRegex(ValueError, 'Checksum mismatch'): setup.prepare()
+                        self.assertFalse(home.exists())
+                    else:
+                        setup.prepare()
+                        self.assertEqual((home / 'bin/netmuxd').read_bytes(), b'netmux fixture')
+                        self.assertEqual(json.loads((home / 'setup-state.json').read_text())['netmuxd'], release)
+
     def test_binary_version_must_match_setup(self):
         with patch.object(setup.subprocess, 'check_output', return_value=f'AltServer-Linux {setup.TAG}\n'):
             setup.verify_binary_version(Path('fixture'))

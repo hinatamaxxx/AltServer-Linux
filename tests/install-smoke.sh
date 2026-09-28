@@ -23,6 +23,15 @@ test ! -e /etc/systemd/system/altserver-native.service
 test -x /opt/altserver-native/bin/AltServer
 test "$(/opt/altserver-native/bin/AltServer --version)" = "AltServer-Linux $(cat VERSION)"
 test -x /opt/altserver-native/bin/netmuxd
+python3 - <<'PY'
+import json, pathlib, re
+state = json.loads(pathlib.Path('/opt/altserver-native/setup-state.json').read_text())
+release = state['netmuxd']
+assert release['version']
+assert re.fullmatch('[0-9a-f]{64}', release['sha256'])
+assert release['url'].startswith('https://github.com/jkcoxson/netmuxd/releases/download/')
+pathlib.Path('/work/netmuxd-release-before.json').write_text(json.dumps(release))
+PY
 ! grep -q altserver /work/systemctl-calls
 # Only synthetic device identity/pairing file; no iPhone is contacted.
 export ALTSERVER_HOST_IP=192.0.2.1
@@ -32,6 +41,11 @@ mkdir -p /var/lib/lockdown
 printf 'synthetic-test-fixture\n' >"/var/lib/lockdown/$IPHONE_UDID.plist"
 sh install.sh --configure
 sh install.sh --configure
+python3 - <<'PY'
+import json, pathlib
+state = json.loads(pathlib.Path('/opt/altserver-native/setup-state.json').read_text())
+assert state['netmuxd'] == json.loads(pathlib.Path('/work/netmuxd-release-before.json').read_text())
+PY
 test "$(stat -c %a /etc/altserver-native.env)" = 600
 grep -q 'NETMUXD_REGISTER_MODE=api' /etc/altserver-native.env
 grep -q 'USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015' /etc/altserver-native.env

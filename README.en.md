@@ -10,7 +10,7 @@ See [sources and URLs](docs/provenance.md) and the [official-source review and a
 
 Setup installs AltServer, official netmuxd, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host; Anisette runs in Docker. systemd starts and monitors the services.
 
-The tested version of netmuxd is **v0.4.3**. Setup downloads this version.
+Setup downloads the latest official netmuxd release available at installation time. Versions used for testing are listed in the [verification record](docs/verification.md).
 
 ## Quick start
 

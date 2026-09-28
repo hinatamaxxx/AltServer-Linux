@@ -10,7 +10,7 @@
 
 AltServer、公式 netmuxd、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上で動作し、systemd が起動と監視を担当します。
 
-netmuxd の動作確認済みバージョンは **v0.4.3** です。セットアップでは、このバージョンを取得します。
+セットアップでは、netmuxd の公式最新リリースを取得します。検証に使用したバージョンは[検証記録](docs/verification.md)に記載しています。
 
 ## 簡単な導入
 
