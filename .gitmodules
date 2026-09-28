@@ -1,7 +1,7 @@
 [submodule "AltServer-Windows"]
 	path = upstream_repo
-	url = https://github.com/jaakkopalvaila/AltServer-Windows
-	branch = ng-fixes
+	url = https://github.com/rileytestut/AltServer-Windows
+	branch = arm_1.7.5_jayce
 [submodule "libraries/libplist"]
 	path = libraries/libplist
 	url = https://github.com/libimobiledevice/libplist

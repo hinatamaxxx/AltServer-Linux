@@ -40,6 +40,14 @@ if F.endswith('AltServerApp.cpp'):
     content = removePart(content, br'static int CALLBACK BrowseFolderCallback', br'\npplx::task<std::shared_ptr<Application>> AltServerApp::InstallApplication')
     content = removePart(content, br'\n.*? AltServerApp::Authenticate', br'\npplx::task<std::shared_ptr<Team>> AltServerApp::FetchTeam')
     content = removePart(content, br'void AltServerApp::ShowNotification', br'\nvoid AltServerApp::ShowErrorAlert')
+    # Keep official error descriptions, but display them through the Linux UI.
+    content, count = re.subn(br'void AltServerApp::ShowErrorAlert\(std::exception& exception, std::string localizedTitle\)\n\{[\s\S]+?\n\}', br'''void AltServerApp::ShowErrorAlert(std::exception& exception, std::string localizedTitle)
+{
+    auto error = dynamic_cast<Error*>(&exception);
+    this->ShowNotification(localizedTitle, error ? error->localizedDescription() : exception.what());
+}''', content)
+    if count != 1:
+        raise RuntimeError('Review Linux error presentation after an upstream update')
     content = removePart(content, br'bool AltServerApp::CheckDependencies', br'\nfs::path AltServerApp::certificatesDirectoryPath')
 
     def insertBefore(content, marker, newcontent):
