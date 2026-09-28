@@ -160,4 +160,11 @@ void AltServerApp::Stop()
 }
 ''')
 
+if F.endswith('ClientConnection.cpp'):
+    old = b'int expectedBytes = *((int32_t*)data.data());'
+    if content.count(old) != 1:
+        raise RuntimeError('Review request framing after an upstream update')
+    content = b'#include "RequestFraming.h"\n' + content.replace(old, b'''int expectedBytes = altserver::requestSize(data);
+        if (expectedBytes == 0) throw ServerError(ServerErrorCode::InvalidRequest);''')
+
 sys.stdout.buffer.write(content)

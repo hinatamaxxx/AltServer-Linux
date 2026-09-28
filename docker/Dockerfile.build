@@ -12,7 +12,8 @@ RUN apk add --no-cache openssl \
       build/objs/ldid_patched/lookup2.c.o build/libplist.a \
       -lssl -lcrypto -lz -o /tmp/test-ldid \
     && python3 tools/check-signing.py /tmp/test-ldid \
-    && python3 tools/check-gsa-client.py
+    && python3 tools/check-gsa-client.py \
+    && python3 tools/check-request-framing.py
 
 FROM scratch AS export
 COPY --from=build /workdir/build/AltServer-x86_64 /AltServer-x86_64
