@@ -21,7 +21,6 @@ string WideStringFromString(string value) { return value; }
 // Only the network destination and unused API clients are substituted. The
 // request builders, asynchronous 2FA methods and error parser are production code.
 AppleAPI::AppleAPI() : _servicesClient(endpoint), _client(endpoint) {}
-AppleAPI::~AppleAPI() = default;
 http_client AppleAPI::gsaClient() { return http_client(endpoint); }
 
 int main(int argc, char** argv)

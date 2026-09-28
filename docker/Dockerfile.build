@@ -20,7 +20,7 @@ RUN clang++ -std=c++17 -include shims/windows_shim.h \
       -Ibuild/AltServer_patched -Ibuild/AltSign_patched -Ishims \
       -Ilibraries/libimobiledevice/include -Ilibraries/libplist/include \
       tests/error_mapping.cpp build/objs/AltSign_patched/Error.cpp.o \
-      build/objs/AltSign_patched/Device.cpp.o -lcpprest -lssl -lcrypto -lpthread \
+      build/objs/AltSign_patched/Device.cpp.o build/libplist.a -lcpprest -lssl -lcrypto -lpthread -lm \
       -o /tmp/test-errors && /tmp/test-errors
 
 FROM scratch AS export
