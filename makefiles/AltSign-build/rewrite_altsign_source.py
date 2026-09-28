@@ -15,6 +15,15 @@ content = content.replace(b'boost::filesystem', b'std::filesystem')
 
 content = content.replace(b'"%FT%T%z"', b'"%Y-%m-%dT%H:%M:%SZ"')
 content = content.replace(b'localtime(', b'gmtime(')
+# Authentication is asynchronous. gmtime() shares process-global storage and
+# can mix timestamps from concurrent requests; keep each conversion on-stack.
+date_counts = {'AnisetteData.cpp': 2, 'AppleAPI.cpp': 2, 'AppleAPI+Authentication.cpp': 4}
+for filename, expected in date_counts.items():
+    if F.endswith(filename):
+        if content.count(b'struct tm* tm;') != expected or content.count(b'gmtime(&time)') != expected:
+            raise RuntimeError('Review UTC date conversion after an upstream update: ' + filename)
+        content = content.replace(b'struct tm* tm;', b'struct tm dateStorage;\n\tstruct tm* tm;')
+        content = content.replace(b'gmtime(&time)', b'gmtime_r(&time, &dateStorage)')
 
 content = content.replace(b'winsock2.h', b'WinSock2.h')
 content = content.replace(b'#include <windows.h>', b'')

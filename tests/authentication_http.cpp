@@ -5,6 +5,8 @@
 #include <cpprest/http_compression.h>
 #include <cassert>
 #include <cstdlib>
+#include <thread>
+#include <vector>
 
 using namespace std;
 using namespace utility;
@@ -27,6 +29,20 @@ int main(int argc, char** argv)
 {
     assert(argc == 5);
     endpoint = argv[1];
+    if (string(argv[2]) == "dates") {
+        vector<thread> threads;
+        for (int day = 1; day <= 4; ++day) {
+            threads.emplace_back([day]() {
+                AnisetteData data("machine", "otp", "user", 1, "device", "serial", "client",
+                    timeval{(day - 1) * 86400, 0}, "en_US", "UTC");
+                const string expected = "1970-01-0" + to_string(day) + "T00:00:00Z";
+                for (int i = 0; i < 500; ++i)
+                    assert(data.json().at("date").as_string() == expected);
+            });
+        }
+        for (auto& thread : threads) thread.join();
+        return 0;
+    }
     const bool sms = string(argv[2]) == "sms";
     const int expectedCode = string(argv[3]) == "wrong-code"
         ? static_cast<int>(APIErrorCode::IncorrectVerificationCode) : atoi(argv[3]);

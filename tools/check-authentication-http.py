@@ -2,6 +2,7 @@
 """Exercise generated production trusted-device/SMS 2FA without Apple or a phone."""
 from collections import deque
 import http.server
+import os
 from pathlib import Path
 import plistlib
 import re
@@ -80,6 +81,8 @@ with tempfile.TemporaryDirectory() as directory:
                     'build/objs/AltSign_patched/AnisetteData.cpp.o', 'build/libplist.a',
                     '-lcpprest', '-lboost_system', '-lssl', '-lcrypto', '-lz', '-lpthread',
                     '-o', str(executable)], check=True)
+    subprocess.run([str(executable), 'http://127.0.0.1', 'dates', '0', '0'],
+                   env=dict(os.environ, TZ='JST-9'), check=True, timeout=15)
     for mode, responses, code, prompts in cases:
         with Server(('127.0.0.1', 0), Handler) as server:
             server.responses = deque(responses)
