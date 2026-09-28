@@ -18,4 +18,12 @@ content = content.replace(b'localtime(', b'gmtime(')
 
 content = content.replace(b'winsock2.h', b'WinSock2.h')
 
+# The pinned fork creates a new GSA connection for each request, but inherits
+# upstream's disabled certificate verification. Keep TLS verification enabled.
+if F.endswith('AppleAPI.cpp'):
+    old = b'config.set_validate_certificates(false);'
+    if content.count(old) != 2:
+        raise RuntimeError('Review GSA TLS configuration after an AltSign update')
+    content = content.replace(old, b'config.set_validate_certificates(true);')
+
 sys.stdout.buffer.write(content)

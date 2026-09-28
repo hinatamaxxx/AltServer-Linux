@@ -10,6 +10,11 @@ template<class F> void rejects(F fn) {
 }
 
 int main() {
+    assert(anisette::clientInfo("").empty());
+    assert(anisette::clientInfo("<Mac> <com.apple.akd/1.0>") == "<Mac> <com.apple.akd/1.0>");
+    assert(anisette::clientInfo("<Mac> <OS> <com.apple.dt.Xcode/1> com.apple.dt.Xcode") ==
+           "<Mac> <OS> <com.apple.akd/1> com.apple.akd");
+    assert(anisette::clientInfo("com.apple.dt.Xcodecom.apple.dt.Xcode") == "com.apple.akdcom.apple.akd");
     for (const char* zone : {"UTC", "Asia/Tokyo", "America/New_York"}) {
         setenv("TZ", zone, 1);
         tzset();

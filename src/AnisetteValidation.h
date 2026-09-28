@@ -6,6 +6,20 @@
 #include <string>
 
 namespace anisette {
+// NyaMisty/AltServer-Linux#135 and jaakkopalvaila's ng fork.
+// Preserve the server-provided machine/OS fields; replace every stale client ID.
+inline std::string clientInfo(std::string value)
+{
+    const std::string blocked = "com.apple.dt.Xcode";
+    const std::string replacement = "com.apple.akd";
+    size_t position = 0;
+    while ((position = value.find(blocked, position)) != std::string::npos) {
+        value.replace(position, blocked.size(), replacement);
+        position += replacement.size();
+    }
+    return value;
+}
+
 inline time_t utcTimestamp(const std::string& value)
 {
     // The service sends UTC (Z), independent of the host's timezone/DST.

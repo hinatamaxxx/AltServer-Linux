@@ -135,7 +135,7 @@ std::shared_ptr<AnisetteData> AnisetteDataManager::FetchAnisetteData()
 					anisette::routingInfo(jsonVal.at("X-Apple-I-MD-RINFO").as_string()),
 					jsonVal.at("X-Mme-Device-Id").as_string(),
 					jsonVal.at("X-Apple-I-SRL-NO").as_string(),
-					jsonVal.at("X-MMe-Client-Info").as_string(),
+					anisette::clientInfo(jsonVal.at("X-MMe-Client-Info").as_string()),
 					tv,
 					jsonVal.at("X-Apple-Locale").as_string(),
 					jsonVal.at("X-Apple-I-TimeZone").as_string());
