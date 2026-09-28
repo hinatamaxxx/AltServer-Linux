@@ -53,6 +53,7 @@ include $(ROOT_DIR)/makefiles/dnssd_loader-build/dnssd_loader-files.mak
 
 #INC_CFLAGS := -Ilibraries
 INC_CFLAGS += $(libimobiledevice_include)
+INC_CFLAGS += -I$(LIB_DIR)
 INC_CFLAGS += $(libplist_include)
 INC_CFLAGS += $(altsign_include)
 INC_CFLAGS += $(dnssd_loader_include)

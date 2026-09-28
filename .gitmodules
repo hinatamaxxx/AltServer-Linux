@@ -11,8 +11,7 @@
 	url = https://github.com/libimobiledevice/libusbmuxd
 [submodule "libraries/libimobiledevice"]
 	path = libraries/libimobiledevice
-	url = https://github.com/jaakkopalvaila/libimobiledevice
-	branch = ng-fixes
+	url = https://github.com/libimobiledevice/libimobiledevice
 [submodule "libraries/ideviceinstaller"]
 	path = libraries/ideviceinstaller
 	url = https://github.com/libimobiledevice/ideviceinstaller

@@ -10,11 +10,18 @@ int main(int argc, char** argv)
     idevice_info_t* list = NULL;
     int count = 0;
     assert(idevice_get_device_list_extended(&list, &count) == IDEVICE_E_SUCCESS);
-    assert(count == 1 && list[0]->conn_type == CONNECTION_NETWORK);
+    const int valid = atoi(argv[2]);
+    assert(count == valid);
+    if (valid) assert(list[0]->conn_type == CONNECTION_NETWORK);
     idevice_device_list_extended_free(list);
     idevice_t device = NULL;
-    assert(idevice_new_with_options(&device, "0000000000000000000000000000000000000000",
-                                    IDEVICE_LOOKUP_NETWORK) == IDEVICE_E_SUCCESS);
+    const idevice_error_t lookup = idevice_new_with_options(&device,
+        "0000000000000000000000000000000000000000", IDEVICE_LOOKUP_NETWORK);
+    if (!valid) {
+        assert(lookup != IDEVICE_E_SUCCESS && device == NULL);
+        return 0;
+    }
+    assert(lookup == IDEVICE_E_SUCCESS);
     idevice_connection_t connection = NULL;
     const idevice_error_t result = idevice_connect(device, atoi(argv[1]), &connection);
     if (atoi(argv[2])) {

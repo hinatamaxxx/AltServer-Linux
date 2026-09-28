@@ -20,6 +20,13 @@ typedef struct timeval TIMEVAL;
 #include <string.h>
 
 #ifdef __cplusplus
+#include <plist/plist.h>
+// Official AltServer C++ uses the pre-2.3 libplist signature. Keep this
+// compatibility overload at the platform boundary instead of patching callers.
+inline plist_err_t plist_from_memory(const char* data, uint32_t size, plist_t* value)
+{
+    return ::plist_from_memory(data, size, value, nullptr);
+}
 #include <algorithm>
 #include <string>
 extern std::string StringFromWideString(std::string wideString);

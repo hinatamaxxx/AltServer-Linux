@@ -21,10 +21,10 @@ $(BUILD_DIR)/objs/%.cpp.o : $(MAIN_DIR)/%.cpp
 include $(ROOT_DIR)/libimobiledevice-files.mak
 
 libimobiledevice_obj := $(libimobiledevice_src:$(MAIN_DIR)/%=$(BUILD_DIR)/objs/%.o)
-$(BUILD_DIR)/objs/libraries/libimobiledevice/src/idevice.c.o: $(LIB_DIR)/libimobiledevice/src/idevice.c $(ROOT_DIR)/rewrite_idevice_source.py
+$(BUILD_DIR)/objs/libraries/libusbmuxd/src/libusbmuxd.c.o: $(LIB_DIR)/libusbmuxd/src/libusbmuxd.c $(ROOT_DIR)/rewrite_usbmux_source.py $(MAIN_DIR)/src/NativeNetworkAddress.h
 	mkdir -p $(@D)
-	python3 $(ROOT_DIR)/rewrite_idevice_source.py "$<" > $(BUILD_DIR)/idevice_native.c
-	$(CC) $(CFLAGS) $(EXTRA_FLAGS) -I$(LIB_DIR)/libimobiledevice/src -o $@ -c $(BUILD_DIR)/idevice_native.c
+	python3 $(ROOT_DIR)/rewrite_usbmux_source.py "$<" > $(BUILD_DIR)/usbmux_native.c
+	$(CC) $(CFLAGS) $(EXTRA_FLAGS) -I$(LIB_DIR)/libusbmuxd/src -I$(MAIN_DIR)/src -o $@ -c $(BUILD_DIR)/usbmux_native.c
 
 $(libimobiledevice_obj) : EXTRA_FLAGS := -I$(ROOT_DIR) $(libimobiledevice_include) $(libplist_include) -I$(LIB_DIR)/libimobiledevice/common -I$(LIB_DIR)/libusbmuxd/common
 $(BUILD_DIR)/libimobiledevice.a : $(libimobiledevice_obj)

@@ -9,7 +9,6 @@ import struct
 import subprocess
 import tempfile
 import threading
-import re
 
 
 def exact(sock, count):
@@ -44,22 +43,7 @@ with tempfile.TemporaryDirectory() as directory:
                     'tests/native_netmux.c',
                     'build/libimobiledevice.a', 'build/libplist.a', '-lssl', '-lcrypto',
                     '-lpthread', '-lm', '-luuid', '-o', str(executable)], check=True)
-    # Exercise the exact generated copy-size helper for every BSD sa_len value.
-    source = Path('build/idevice_native.c').read_text()
-    helper = re.search(r'static size_t idevice_sockaddr_len\(.*?\n\}', source, re.S).group()
-    (root / 'sizes.c').write_text('#include <stddef.h>\n#include <assert.h>\n' + helper + '''
-int main(void) {
-    unsigned char data[200] = {0};
-    for (int i = 0; i < 256; ++i) {
-        data[0] = i; data[1] = 2; assert(idevice_sockaddr_len(data) == 16);
-        data[1] = 30; assert(idevice_sockaddr_len(data) == 28);
-    }
-    data[0] = 2; data[1] = 0; assert(idevice_sockaddr_len(data) == 16);
-    data[0] = 10; assert(idevice_sockaddr_len(data) == 28);
-    data[0] = 77; assert(idevice_sockaddr_len(data) == 200);
-}
-''')
-    subprocess.run(['gcc', str(root / 'sizes.c'), '-o', str(root / 'sizes')], check=True)
+    subprocess.run(['gcc', '-Isrc', 'tests/network_address.c', '-o', str(root / 'sizes')], check=True)
     subprocess.run([str(root / 'sizes')], check=True)
     cases = []
     ipv4 = bytes(2) + socket.inet_aton('127.0.0.1') + bytes(8)
@@ -69,6 +53,9 @@ int main(void) {
     ipv6 = bytes(6) + socket.inet_pton(socket.AF_INET6, '::1') + bytes(4)
     cases.extend((socket.AF_INET6, prefix + ipv6, True) for prefix in (b'\x0a\0', b'\x1c\x1e'))
     cases.append((socket.AF_INET, b'\x4d\0' + ipv4, False))
+    cases.extend((socket.AF_INET, address, False) for address in (
+        b'', b'\x02', b'\x02\0' + bytes(13), b'\x10\x02' + bytes(13),
+        b'\x0a\0' + bytes(25), b'\x1c\x1e' + bytes(25), b'\x02\0' + bytes(199)))
     for family, address, success in cases:
         with socket.socket(family, socket.SOCK_STREAM) as device, Mux(('127.0.0.1', 0), Handler) as mux:
             device.bind(('127.0.0.1' if family == socket.AF_INET else '::1', 0))
@@ -87,4 +74,4 @@ int main(void) {
             finally:
                 mux.shutdown()
                 worker.join()
-print('Native netmux: 9 direct-library cases and 512 BSD copy-length bounds passed')
+print(f'Native netmux: {len(cases)} direct-library cases and exhaustive BSD length/boundary checks passed')
