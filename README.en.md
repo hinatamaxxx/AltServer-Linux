@@ -33,6 +33,7 @@ Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release a
 
 ## Changes
 
+- v0.1.2: Fix the Bonjour helper's 64-bit types and text/binary argument handling, and report registration API failures to the parent process. Following AltKeeper's approach, reject invalid JSON request lengths before reading the body and cap JSON frames at 4 MiB. This limit does not apply to IPA payloads.
 - v0.1.1: Integrate Apple ID client-header and GSA connection fixes reported by other forks, plus the same ldid source as AltServer for Windows 1.7.4, to address signing errors on newer iOS versions. See the [fork review](docs/fork-review.md) for sources and selection decisions. Live Apple sign-in and operation on a physical iPhone remain unverified.
 - Enable GSA TLS certificate validation, removing the inherited verification bypass.
 - Parse Anisette timestamps as UTC regardless of the host timezone; validate dates and 64-bit routing info.

@@ -1,5 +1,9 @@
 # 検証記録 / Verification
 
+v0.1.2 では Bonjour ブリッジの5ケースを加え、Python テストは39件になります。生成済みの要求受信処理に対し、JSON 長さの境界値と不正長の拒否も試験します。[追加調査](fork-review.md)に詳細を記載しています。実際の LAN 上の Bonjour 探索と Avahi 再起動後の広告復旧は未検証です。
+
+v0.1.2 adds five Bonjour bridge cases, bringing the Python total to 39, and tests JSON length boundaries and rejection in the generated request handler. See the [additional review](fork-review.md). Actual Bonjour discovery on a LAN and advertisement recovery after an Avahi restart remain unverified.
+
 v0.1.1 の CI には、署名の暗号学的検証と完全なハッシュの確認、GSA の TCP 接続分離と TLS 検証設定の確認を追加しています。使用するのは架空のアプリ、一時的なテスト証明書、ローカルサーバーです。[フォーク調査](fork-review.md)に方法と限界を記載しています。以下の34件・6ケースの検証も引き続き実行します。
 
 For v0.1.1, CI additionally checks cryptographic signatures, full agility hashes, separate GSA TCP connections and the TLS-validation setting, using a synthetic app, disposable test identity and local server. The [fork review](fork-review.md) describes methods and limits. The 34 regression tests and six CLI cases below continue to run.
