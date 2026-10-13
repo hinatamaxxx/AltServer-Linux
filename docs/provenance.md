@@ -22,7 +22,9 @@ The direct parent is NyaMisty's unofficial Linux port; official source, third-pa
 | 設計の参考 / Design reference | [https://github.com/BartolomeoRusso9/altkeeper](https://github.com/BartolomeoRusso9/altkeeper) | 要求長の検証・実行依存なし / Request-length validation; no runtime dependency |
 | 復旧機能の取り込み元 / Imported recovery tools | [https://github.com/hinatamaxxx/altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover) | 監視・復旧スクリプト / Monitoring and recovery scripts |
 | 公式配布物 / Upstream distribution | [https://github.com/jkcoxson/netmuxd](https://github.com/jkcoxson/netmuxd) | 改変なし / Unmodified |
-| 公式配布物 / Upstream distribution | [https://github.com/Dadoum/anisette-v3-server](https://github.com/Dadoum/anisette-v3-server) | Docker イメージ / Docker image |
+| 過去の採用元 / Historical source | [https://github.com/Dadoum/anisette-v3-server](https://github.com/Dadoum/anisette-v3-server) | v0.3.x までの Anisette。Apple が拒否するため v0.4.0 で廃止 / Anisette through v0.3.x; removed in v0.4.0 after Apple rejection |
+| ABI の参考 / ABI reference | [https://github.com/rileytestut/AltServer-Windows](https://github.com/rileytestut/AltServer-Windows) | Wine 用 Anisette ヘルパーの iCloud 関数呼び出し / iCloud calls in the Wine Anisette helper |
+| 回避策の出典 / Workaround source | [https://github.com/altstoreio/AltStore](https://github.com/altstoreio/AltStore) | Issue #1737: 手動の確認コードによる信頼登録 / Trust with a manually generated code |
 
 固定コミットと変更内容は以下および[フォーク調査](fork-review.md)を、現在の公式実装との比較は[上流調査](upstream-review.md)を参照してください。
 
@@ -39,7 +41,7 @@ Download and open the [HTML source directory](sources.html) in a browser for new
 - Recovery code: `hinatamaxxx/altserver-linux-native-autorecover`, commit `d61a5b6`, MIT. Runtime helpers, regression tests and diagnostic tools were imported; the new installer and service defaults integrate official netmuxd.
 - `docs/history/` contains predecessor documents. They describe the old helper-only repository and its historical tests, not this fork's current installation procedure. Do not use their trial/upgrade commands for this fork.
 - `docs/upstream-readme.md` is an unchanged upstream reference; use the root README for this fork.
-- The setup bundle contains this fork's compiled binary. netmuxd and Anisette are fetched from their upstream distributions, not rebuilt or modified here.
+- The setup bundle contains this fork's compiled binary. netmuxd is fetched from its upstream distribution, not rebuilt or modified here. Since v0.4.0, the Anisette container is built locally from `anisette/icloud-wine` (Debian packages plus this fork's helper source); Apple's iCloud libraries are supplied by the user and never distributed.
 
 ## 日本語
 
@@ -48,4 +50,4 @@ Download and open the [HTML source directory](sources.html) in a browser for new
 - 復旧コード: `hinatamaxxx/altserver-linux-native-autorecover`（コミット `d61a5b6`、MIT）。実行用スクリプト、回帰テスト、診断ツールを取り込み、公式 netmuxd と連携するよう統合しました。
 - `docs/history/`: 旧資料です。旧リポジトリの検証記録であり本フォークの導入手順ではありません。旧試験・更新用コマンドは本フォークで使用しないでください。
 - `docs/upstream-readme.md`: 上流 README の原文です（参考用）。本フォークの使い方はルート README を参照してください。
-- 配布バンドル: 本フォークのビルド済みバイナリを含みます。netmuxd と Anisette は公式配布物を取得し、本リポジトリでは改変・再ビルドしていません。
+- 配布バンドル: 本フォークのビルド済みバイナリを含みます。netmuxd は公式配布物を取得し、本リポジトリでは改変・再ビルドしていません。v0.4.0 以降の Anisette コンテナは `anisette/icloud-wine`（Debian パッケージと本フォークのヘルパーのソース）から手元でビルドします。Apple の iCloud ライブラリは利用者が用意し、本リポジトリからは配布しません。

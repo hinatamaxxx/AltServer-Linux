@@ -3,7 +3,7 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if ! command -v python3 >/dev/null 2>&1; then
   case "${1:-}" in
-    --help|-h) echo 'Usage: sudo sh install.sh [--prepare|--configure]'; exit 0 ;;
+    --help|-h) echo 'Usage: sudo sh install.sh [--prepare|--import-apple-runtime ARCHIVE|--configure]'; exit 0 ;;
   esac
   [ "$(id -u)" = 0 ] || { echo 'Run with sudo' >&2; exit 1; }
   . /etc/os-release

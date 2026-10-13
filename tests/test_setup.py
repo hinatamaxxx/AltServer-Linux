@@ -74,7 +74,7 @@ class SetupTests(unittest.TestCase):
                      patch.object(setup, 'ENV', root / 'absent.env'), patch.object(setup, 'run'), \
                      patch.object(setup, 'verify_binary_version'), patch.object(setup, 'latest_netmux_release', return_value=release), \
                      patch.object(setup, 'download', side_effect=download), \
-                     patch.object(setup, 'output', return_value=json.dumps([dict(RepoDigests=[setup.ANISETTE_IMAGE])])):
+                     patch.object(setup, 'output', return_value='sha256:' + 'b' * 64):
                     if corrupt:
                         with self.assertRaisesRegex(ValueError, 'Checksum mismatch'): setup.prepare()
                         self.assertFalse(home.exists())
@@ -82,6 +82,78 @@ class SetupTests(unittest.TestCase):
                         setup.prepare()
                         self.assertEqual((home / 'bin/netmuxd').read_bytes(), b'netmux fixture')
                         self.assertEqual(json.loads((home / 'setup-state.json').read_text())['netmuxd'], release)
+                        self.assertEqual((home / 'anisette-image').read_text(), 'sha256:' + 'b' * 64 + '\n')
+
+    def test_prepare_rejects_mutable_anisette_image_reference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); dist = root / 'dist'; dist.mkdir()
+            (dist / 'AltServer-x86_64').write_bytes(b'altserver fixture')
+            (dist / 'SHA256SUMS').write_text(hashlib.sha256(b'altserver fixture').hexdigest() + '  AltServer-x86_64\n')
+            archive = io.BytesIO()
+            with tarfile.open(fileobj=archive, mode='w:gz') as tar:
+                info = tarfile.TarInfo('netmuxd'); info.size = 1
+                tar.addfile(info, io.BytesIO(b'n'))
+            release = dict(version='v1', url='u', sha256=hashlib.sha256(archive.getvalue()).hexdigest())
+            home = root / 'install'
+            with patch.object(setup, 'ROOT', root), patch.object(setup, 'HOME', home), \
+                 patch.object(setup, 'ENV', root / 'absent.env'), patch.object(setup, 'run'), \
+                 patch.object(setup, 'verify_binary_version'), patch.object(setup, 'latest_netmux_release', return_value=release), \
+                 patch.object(setup, 'download', side_effect=lambda url, dest: dest.write_bytes(archive.getvalue())), \
+                 patch.object(setup, 'output', return_value='altserver-icloud-anisette:latest'):
+                with self.assertRaisesRegex(ValueError, 'image ID'): setup.prepare()
+            self.assertFalse(home.exists())
+
+    def runtime_archive(self, path, files):
+        with tarfile.open(path, 'w:gz') as tar:
+            for name, data in files.items():
+                info = tarfile.TarInfo(name); info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+
+    def test_import_apple_runtime_verifies_binaries_and_root(self):
+        files = {'Apple/Internet Services/iCloud_main.dll': b'icloud fixture',
+                 'Apple/Apple Application Support/CoreADI.dll': b'coreadi fixture',
+                 'Apple/Apple Application Support/objc.dll': b'objc fixture'}
+        digests = {'Internet Services/iCloud_main.dll': hashlib.sha256(b'icloud fixture').hexdigest(),
+                   'Apple Application Support/CoreADI.dll': hashlib.sha256(b'coreadi fixture').hexdigest()}
+        for corrupt in (None, 'binary', 'root'):
+            with self.subTest(corrupt=corrupt), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); archive = root / 'apple-runtime.tar.gz'
+                payload = dict(files)
+                if corrupt == 'binary':
+                    payload['Apple/Apple Application Support/CoreADI.dll'] = b'other version'
+                self.runtime_archive(archive, payload)
+                apple = root / 'home/icloud-local/apple'
+                certificate = b'root fixture'
+                with patch.object(setup, 'APPLE_DIR', apple), patch.object(setup, 'APPLE_RUNTIME_SHA256', digests), \
+                     patch.object(setup, 'APPLE_ROOT_SHA256', hashlib.sha256(b'other' if corrupt == 'root' else certificate).hexdigest()), \
+                     patch.object(setup, 'download', side_effect=lambda url, dest: dest.write_bytes(certificate)), \
+                     patch.object(setup, 'ENV', root / 'absent.env'), patch.object(setup, 'run') as run:
+                    if corrupt:
+                        with self.assertRaisesRegex(ValueError, 'Checksum mismatch'): setup.import_apple_runtime(archive)
+                        self.assertFalse(apple.exists())
+                    else:
+                        setup.import_apple_runtime(archive)
+                        self.assertEqual((apple / 'Apple Application Support/objc.dll').read_bytes(), b'objc fixture')
+                        self.assertEqual((apple / 'AppleIncRootCertificate.cer').read_bytes(), certificate)
+                        run.assert_not_called()
+                self.assertEqual([p.name for p in apple.parent.iterdir() if p.name.startswith('.apple-')], [])
+
+    def test_import_apple_runtime_rejects_unsafe_archives(self):
+        for name in ('../escape.dll', '/etc/passwd', 'Other/iCloud_main.dll', 'Apple/../../escape.dll'):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp); archive = root / 'apple-runtime.tar.gz'
+                self.runtime_archive(archive, {name: b'fixture'})
+                with patch.object(setup, 'APPLE_DIR', root / 'apple'), patch.object(setup, 'download') as download:
+                    with self.assertRaisesRegex(ValueError, 'Unexpected path'): setup.import_apple_runtime(archive)
+                    download.assert_not_called()
+                self.assertFalse((root / 'apple').exists())
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); archive = root / 'apple-runtime.tar.gz'
+            with tarfile.open(archive, 'w:gz') as tar:
+                link = tarfile.TarInfo('Apple/link.dll'); link.type = tarfile.SYMTYPE; link.linkname = '/etc/passwd'
+                tar.addfile(link)
+            with patch.object(setup, 'APPLE_DIR', root / 'apple'):
+                with self.assertRaisesRegex(ValueError, 'regular files'): setup.import_apple_runtime(archive)
 
     def test_binary_version_must_match_setup(self):
         with patch.object(setup.subprocess, 'check_output', return_value=f'AltServer-Linux {setup.TAG}\n'):

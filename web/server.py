@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 UNITS = {
     'altserver': 'altserver-native.service',
     'netmuxd': 'altserver-native-netmuxd.service',
-    'anisette': 'altserver-anisette-docker.service',
+    'anisette': 'altserver-icloud-local.service',
     'discovery': 'iphone-mobdev-service.service',
     'health': 'altserver-native-healthcheck.timer',
 }

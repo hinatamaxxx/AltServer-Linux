@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""Make Apple trust this server's local anisette identity (two-factor verification).
+
+Use when AltStore fails with -22411 and never shows a verification-code field: Apple
+asks for two-factor authentication (status 409) but offers no method AltStore handles.
+Generate a code on a trusted device (Settings > [name] > Sign-In & Security >
+Two-Factor Authentication > Get Verification Code) and enter it here.
+
+Interactive only. The Apple ID password, verification code and Apple tokens stay in
+memory and are never printed or written to disk. Only Apple status codes are shown.
+"""
+import base64
+import getpass
+import hashlib
+import hmac
+import json
+import os
+import plistlib
+import shlex
+import ssl
+import sys
+import urllib.error
+import urllib.request
+
+GSA = "https://gsa.apple.com/grandslam/GsService2"
+TRUSTED_DEVICE = "https://gsa.apple.com/auth/verify/trusteddevice"
+VALIDATE = "https://gsa.apple.com/grandslam/GsService2/validate"
+APP = "com.apple.gs.xcode.auth"
+PLIST_PROLOG = (b"<?xml version='1.0' encoding='UTF-8'?>\n<!DOCTYPE plist PUBLIC "
+                b"'-//Apple//DTD PLIST 1.0//EN' 'http://www.apple.com/DTDs/PropertyList-1.0.dtd'>\n")
+
+
+def configuration(path=os.environ.get("ENV_FILE", "/etc/altserver-native.env")):
+    values = {}
+    with open(path) as stream:
+        for line in stream:
+            if "=" in line and not line.lstrip().startswith("#"):
+                key, value = line.rstrip("\n").split("=", 1)
+                parsed = shlex.split(value)
+                values[key] = parsed[0] if parsed else ""
+    return values
+
+
+def anisette(url):
+    with urllib.request.urlopen(url, timeout=30) as stream:
+        data = json.load(stream)
+    # Same normalization as AltServer (src/AnisetteValidation.h).
+    data["X-MMe-Client-Info"] = data["X-MMe-Client-Info"].replace("com.apple.dt.Xcode", "com.apple.akd")
+    return data
+
+
+def cpd(data):
+    result = {key: data[key] for key in ("X-Apple-I-Client-Time", "X-Apple-I-MD", "X-Apple-I-MD-LU",
+                                         "X-Apple-I-MD-M", "X-Apple-I-SRL-NO", "X-Apple-I-TimeZone",
+                                         "X-Apple-Locale", "X-Mme-Device-Id")}
+    result["X-Apple-I-MD-RINFO"] = int(data["X-Apple-I-MD-RINFO"])
+    result.update(bootstrap=True, icscrec=True, loc=data["X-Apple-Locale"], pbe=False, prkgen=True, svct="iCloud")
+    return result
+
+
+class Client:
+    def __init__(self, url, root):
+        self.url = url
+        self.context = ssl.create_default_context()
+        # gsa.apple.com chains to Apple's own root, which Debian does not ship.
+        with open(root, "rb") as certificate:
+            self.context.load_verify_locations(cadata=ssl.DER_cert_to_PEM_cert(certificate.read()))
+
+    def send(self, url, body=None, headers=None):
+        request = urllib.request.Request(url, body, headers or {}, method="POST" if body else "GET")
+        try:
+            with urllib.request.urlopen(request, timeout=60, context=self.context) as stream:
+                return stream.status, stream.read(1_000_000)
+        except urllib.error.HTTPError as error:
+            return error.code, error.read(1_000_000)
+
+    def gsa(self, data, parameters):
+        body = plistlib.dumps({"Header": {"Version": "1.0.1"}, "Request": {"cpd": cpd(data), **parameters}})
+        status, raw = self.send(GSA, body, {"Content-Type": "text/x-xml-plist", "Accept": "*/*",
+                                            "User-Agent": "akd/1.0 CFNetwork/978.0.7 Darwin/18.7.0",
+                                            "X-MMe-Client-Info": data["X-MMe-Client-Info"]})
+        if status != 200:
+            raise SystemExit(f"Apple GSA HTTP {status}")
+        response = plistlib.loads(raw)["Response"]
+        return response, response.get("Status", {})
+
+    def login(self, apple_id, password):
+        from srp import _pysrp as srp
+        srp.rfc5054_enable()
+        srp.no_username_in_x()
+        data = anisette(self.url)
+        user = srp.User(apple_id.encode(), b"", hash_alg=srp.SHA256, ng_type=srp.NG_2048)
+        _, a = user.start_authentication()
+        response, status = self.gsa(data, {"A2k": a, "ps": ["s2k", "s2k_fo"], "u": apple_id, "o": "init"})
+        if status.get("ec"):
+            raise SystemExit(f"Apple sign-in failed: {status.get('em', '')} ({status['ec']})")
+        if response.get("sp") not in ("s2k", "s2k_fo"):
+            raise SystemExit("Unsupported Apple password protocol")
+        digest = hashlib.sha256(password.encode()).digest()
+        if response["sp"] == "s2k_fo":
+            digest = digest.hex().encode()
+        user.p = hashlib.pbkdf2_hmac("sha256", digest, response["s"], response["i"], 32)
+        m1 = user.process_challenge(response["s"], response["B"])
+        if m1 is None:
+            raise SystemExit("Apple sign-in challenge failed")
+        response, status = self.gsa(data, {"c": response["c"], "M1": m1, "u": apple_id, "o": "complete"})
+        if status.get("ec"):
+            raise SystemExit(f"Apple sign-in failed: {status.get('em', '')} ({status['ec']})")
+        user.verify_session(response["M2"])
+        if not user.authenticated():
+            raise SystemExit("Apple server verification failed")
+        return data, decrypt_spd(user.get_session_key(), response["spd"]), status
+
+    def app_tokens(self, data, spd):
+        checksum = hmac.new(spd["sk"], b"apptokens" + spd["adsid"].encode() + APP.encode(), hashlib.sha256).digest()
+        _, status = self.gsa(data, {"app": [APP], "c": spd["c"], "checksum": checksum, "o": "apptokens",
+                                    "t": spd["GsIdmsToken"], "u": spd["adsid"]})
+        return status.get("ec", 0), status.get("em", "")
+
+
+def decrypt_spd(session_key, value):
+    from cryptography.hazmat.primitives import padding
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    key = hmac.new(session_key, b"extra data key:", hashlib.sha256).digest()
+    iv = hmac.new(session_key, b"extra data iv:", hashlib.sha256).digest()[:16]
+    decryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+    unpadder = padding.PKCS7(128).unpadder()
+    plain = unpadder.update(decryptor.update(value) + decryptor.finalize()) + unpadder.finalize()
+    if not plain.lstrip().startswith((b"<?xml", b"bplist")):
+        plain = PLIST_PROLOG + plain  # Apple sends the dictionary without the XML prolog.
+    return plistlib.loads(plain)
+
+
+def verification_headers(data, spd):
+    identity = base64.b64encode(f"{spd['adsid']}:{spd['GsIdmsToken']}".encode()).decode()
+    return {"Accept": "application/x-buddyml", "Accept-Language": "en-us",
+            "Content-Type": "application/x-plist", "User-Agent": "Xcode",
+            "X-Apple-App-Info": APP, "X-Xcode-Version": "11.2 (11B41)",
+            "X-Apple-Identity-Token": identity,
+            "X-Apple-I-MD-M": data["X-Apple-I-MD-M"], "X-Apple-I-MD": data["X-Apple-I-MD"],
+            "X-Apple-I-MD-LU": data["X-Apple-I-MD-LU"], "X-Apple-I-MD-RINFO": data["X-Apple-I-MD-RINFO"],
+            "X-Mme-Device-Id": data["X-Mme-Device-Id"], "X-MMe-Client-Info": data["X-MMe-Client-Info"],
+            "X-Apple-I-Client-Time": data["X-Apple-I-Client-Time"], "X-Apple-Locale": data["X-Apple-Locale"],
+            "X-Apple-I-TimeZone": data["X-Apple-I-TimeZone"]}
+
+
+def main():
+    if not sys.stdin.isatty():
+        raise SystemExit("Run interactively, for example: sudo altserver-apple-trust")
+    config = configuration()
+    url = config.get("ANISETTE_URL", "http://127.0.0.1:6972/")
+    apple_dir = config.get("ICLOUD_ANISETTE_APPLE_DIR", "/opt/altserver-native/icloud-local/apple")
+    client = Client(url, os.path.join(apple_dir, "AppleIncRootCertificate.cer"))
+    print(f"Anisette source: {url}")
+    apple_id = input("Apple ID: ").strip()
+    password = getpass.getpass("Password (hidden): ")
+    data, spd, status = client.login(apple_id, password)
+    print(f"Signed in; Apple status {status.get('hsc', 200)}")
+    if status.get("hsc", 200) == 200 and "sk" in spd and "c" in spd:
+        ec, em = client.app_tokens(data, spd)
+        if ec == 0:
+            print("This server is already trusted. Retry AltStore.")
+            return
+        print(f"Token check: {em} ({ec})")
+    headers = verification_headers(data, spd)
+    status_code, _ = client.send(TRUSTED_DEVICE, None, headers)
+    if 200 <= status_code < 300:
+        print("Apple sent a code to your trusted devices.")
+    else:
+        print("Apple did not send a code. Generate one on your iPhone:")
+        print("  Settings > [your name] > Sign-In & Security > Two-Factor Authentication > Get Verification Code")
+    headers["security-code"] = input("Enter the 6-digit two-factor code: ").strip()
+    status_code, raw = client.send(VALIDATE, None, headers)
+    try:
+        reply = plistlib.loads(raw)
+        ec, em = reply.get("ec", 0), reply.get("em", "")
+    except Exception:
+        ec, em = None, ""
+    if not 200 <= status_code < 300 or ec:
+        raise SystemExit(f"Verification failed: HTTP {status_code}, Apple code {ec} {em}".rstrip())
+    data, spd, status = client.login(apple_id, password)
+    ec, em = client.app_tokens(data, spd) if status.get("hsc", 200) == 200 else (status.get("hsc"), "")
+    if ec:
+        raise SystemExit(f"Apple still refuses this server: {em} ({ec})")
+    print("Success: this server is now trusted by Apple. Retry AltStore.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        raise SystemExit(130)

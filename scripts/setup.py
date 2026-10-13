@@ -25,7 +25,18 @@ if not re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', TAG):
 RELEASE = f'https://github.com/hinatamaxxx/AltServer-Linux/releases/download/{TAG}'
 NETMUX_LATEST = 'https://api.github.com/repos/jkcoxson/netmuxd/releases/latest'
 NETMUX_ASSET = 'netmuxd-x86_64-unknown-linux-gnu.tar.gz'
-ANISETTE_IMAGE = 'dadoum/anisette-v3-server@sha256:1e20384985d3c49965f444bef39d627768dacc39ea0dca91f2a535edb7591ba3'
+# Local anisette: Apple's Windows iCloud runtime under Wine (anisette/icloud-wine).
+ICLOUD_IMAGE_TAG = f'altserver-icloud-anisette:{TAG}'
+ICLOUD_STATE = Path('/var/lib/altserver-native/icloud-local')
+APPLE_DIR = HOME / 'icloud-local/apple'
+APPLE_ROOT_URL = 'https://www.apple.com/appleca/AppleIncRootCertificate.cer'
+APPLE_ROOT_SHA256 = 'b0b1730ecbc7ff4505142c49f1295e6eda6bcaed7e2c68c5be91b5a11001f024'
+# The helper's native offsets are verified for these exact Apple binaries only.
+APPLE_RUNTIME_SHA256 = {
+    'Internet Services/iCloud_main.dll': '9e3af0c4cf50cc65554a9478aa7b381ff351373bdf034413a877f52912ff5010',
+    'Apple Application Support/CoreADI.dll': '961539f222aa018ef5b32fc0c82fca6d3e2a70100c0037741530ee5324447f9b',
+}
+APPLE_RUNTIME_LIMIT = 1024 * 1024 * 1024
 
 
 def run(*args, **kwargs):
@@ -106,6 +117,56 @@ def validated_device(host, udid, mac, fallback):
                 IPHONE_WIFI_MAC=mac.lower(), IPHONE_FALLBACK_IP=ipv4(fallback) if fallback else '')
 
 
+def import_apple_runtime(archive):
+    """Install Apple's runtime from scripts/windows/export-apple-runtime.ps1 output."""
+    archive = Path(archive)
+    if not archive.is_file():
+        raise ValueError('Apple runtime archive not found')
+    APPLE_DIR.parent.mkdir(parents=True, exist_ok=True)
+    stage = Path(tempfile.mkdtemp(prefix='.apple-', dir=APPLE_DIR.parent))
+    try:
+        total = 0
+        with tarfile.open(archive) as tar:
+            for member in tar.getmembers():
+                parts = Path(member.name).parts
+                if member.name.startswith('/') or '..' in parts or not parts or parts[0] != 'Apple':
+                    raise ValueError('Unexpected path in Apple runtime archive')
+                if member.isdir():
+                    continue
+                if not member.isfile():
+                    raise ValueError('Apple runtime archive may contain only regular files')
+                total += member.size
+                if total > APPLE_RUNTIME_LIMIT:
+                    raise ValueError('Apple runtime archive is too large')
+                target = stage.joinpath(*parts[1:])
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with tar.extractfile(member) as src, target.open('wb') as dst:
+                    shutil.copyfileobj(src, dst)
+                target.chmod(0o644)
+        for name, digest in APPLE_RUNTIME_SHA256.items():
+            if not (stage / name).is_file():
+                raise ValueError('Apple runtime archive lacks ' + name)
+            verify(stage / name, digest)
+        certificate = stage / 'AppleIncRootCertificate.cer'
+        download(APPLE_ROOT_URL, certificate)
+        verify(certificate, APPLE_ROOT_SHA256)
+        certificate.chmod(0o644)
+        for directory in [stage, *(d for d in stage.rglob('*') if d.is_dir())]:
+            directory.chmod(0o755)
+        if APPLE_DIR.exists():
+            previous = APPLE_DIR.with_name('apple.previous')
+            if previous.exists():
+                shutil.rmtree(previous)
+            os.replace(APPLE_DIR, previous)
+        os.replace(stage, APPLE_DIR)
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage)
+    print('Apple runtime installed. It contains no account data; Wine state is kept separately.')
+    if ENV.exists():
+        run('systemctl', 'restart', 'altserver-icloud-local.service')
+
+
 def preflight():
     if os.geteuid() != 0:
         raise ValueError('Run with sudo: sudo sh install.sh --prepare')
@@ -125,12 +186,12 @@ def prepare():
             state = json.loads((HOME / 'setup-state.json').read_text())
             if state.get('version') == TAG and state.get('phase') == 'prepared' and all((HOME / p).is_file() for p in
                                                        ('bin/AltServer', 'bin/netmuxd', 'anisette-image')):
-                print('Already prepared. Connect/trust an iPhone later, then use --configure.')
+                print('Already prepared. Import the Apple runtime, connect/trust an iPhone, then use --configure.')
                 return
         raise ValueError('Existing installation detected; see docs/setup.md before migrating')
     packages = ['ca-certificates', 'curl', 'avahi-daemon', 'avahi-utils',
                 'libavahi-compat-libdnssd1', 'usbmuxd', 'libimobiledevice-utils',
-                'iproute2', 'util-linux', 'python3']
+                'iproute2', 'util-linux', 'python3', 'python3-srp', 'python3-cryptography']
     if not shutil.which('docker'):
         packages.append('docker.io')
     run('apt-get', 'update')
@@ -171,20 +232,20 @@ def prepare():
             binary.chmod(0o755)
             run(str(binary), '--help', stdout=subprocess.DEVNULL, timeout=15)
         verify_binary_version(alt)
-        run('docker', 'pull', ANISETTE_IMAGE)
-        # Record the immutable digest actually pulled; later starts never track latest.
-        image = json.loads(output('docker', 'image', 'inspect', ANISETTE_IMAGE))[0]
-        digests = [v for v in image.get('RepoDigests', []) if v.startswith('dadoum/anisette-v3-server@sha256:')]
-        if ANISETTE_IMAGE not in digests:
-            raise ValueError('No immutable anisette image digest found')
+        run('docker', 'build', '-t', ICLOUD_IMAGE_TAG, str(ROOT / 'anisette/icloud-wine'))
+        # Record the immutable image ID actually built; later starts never rebuild or retag.
+        image = output('docker', 'image', 'inspect', '--format', '{{.Id}}', ICLOUD_IMAGE_TAG)
+        if not re.fullmatch(r'sha256:[0-9a-f]{64}', image):
+            raise ValueError('No immutable anisette image ID found')
         HOME.mkdir(parents=True, exist_ok=True)
         (HOME / 'logs').mkdir(exist_ok=True)
         atomic_write(HOME / 'bin/AltServer', alt.read_bytes(), 0o755)
         atomic_write(HOME / 'bin/netmuxd', (stage / 'netmuxd').read_bytes(), 0o755)
-        atomic_write(HOME / 'anisette-image', (ANISETTE_IMAGE + '\n').encode())
+        atomic_write(HOME / 'anisette-image', (image + '\n').encode())
         atomic_write(HOME / 'setup-state.json', json.dumps(dict(version=TAG, phase='prepared', netmuxd=netmux)).encode())
     print('Prepared. No iPhone required; AltServer has not been activated.')
-    print('Later: connect and trust one iPhone by USB, then sudo sh install.sh --configure')
+    print('Next: sudo sh install.sh --import-apple-runtime apple-runtime.tar.gz (see docs/setup.md)')
+    print('Then connect and trust one iPhone by USB, and run sudo sh install.sh --configure')
 
 
 def configure():
@@ -225,13 +286,14 @@ def configure():
     if not (Path('/var/lib/lockdown') / (udid + '.plist')).is_file():
         raise ValueError('The configured iPhone has no local pairing record; pair it by USB first')
     image = (HOME / 'anisette-image').read_text().strip()
-    if not re.fullmatch(r'dadoum/anisette-v3-server@sha256:[0-9a-f]{64}', image):
-        raise ValueError('Invalid prepared anisette image digest')
+    if not re.fullmatch(r'sha256:[0-9a-f]{64}', image):
+        raise ValueError('Invalid prepared anisette image ID')
     values.update(ALTSERVER_HOME=str(HOME), ALTSERVER_BIN=str(HOME / 'bin/AltServer'),
                   NETMUXD_BIN=str(HOME / 'bin/netmuxd'), USBMUXD_SOCKET_ADDRESS='127.0.0.1:27015',
                   NETMUXD_REGISTER_MODE='api', ALTSERVER_NO_SUBSCRIBE='1',
-                  ALTSERVER_ANISETTE_SERVER='http://127.0.0.1:6969', ANISETTE_URL='http://127.0.0.1:6969/',
-                  ANISETTE_DOCKER_IMAGE=image, ANISETTE_STATE_DIR='/var/lib/altserver-native/anisette')
+                  ALTSERVER_ANISETTE_SERVER='http://127.0.0.1:6972', ANISETTE_URL='http://127.0.0.1:6972/',
+                  ICLOUD_ANISETTE_IMAGE=image, ICLOUD_ANISETTE_STATE_DIR=str(ICLOUD_STATE),
+                  ICLOUD_ANISETTE_APPLE_DIR=str(APPLE_DIR))
     content = ''.join(f'{k}={shlex.quote(v)}\n' for k, v in values.items()).encode()
     state.update(version=TAG, phase='configuring', configuration_sha256=hashlib.sha256(content).hexdigest())
     atomic_write(HOME / 'setup-state.json', json.dumps(state).encode())
@@ -245,13 +307,16 @@ def activate(state):
     env = dict(os.environ, ENV_FILE=str(ENV))
     run('sh', str(ROOT / 'scripts/install-helper-scripts.sh'), env=env)
     run('sh', str(ROOT / 'scripts/install-systemd-units.sh'), env=env)
-    run('systemctl', 'start', 'altserver-anisette-docker.service', 'altserver-native-netmuxd.service',
+    run('systemctl', 'start', 'altserver-icloud-local.service', 'altserver-native-netmuxd.service',
         'iphone-mobdev-address.service', 'iphone-mobdev-service.service',
         'altserver-native.service', 'altserver-native-healthcheck.timer')
     state['phase'] = 'configured'
     atomic_write(HOME / 'setup-state.json', json.dumps(state).encode())
     print('Configured. Run sudo /usr/local/sbin/altserver-native-healthcheck to inspect readiness.')
+    if not (APPLE_DIR / 'AppleIncRootCertificate.cer').is_file():
+        print('Anisette waits for the Apple runtime: sudo sh install.sh --import-apple-runtime <archive>')
     print('iPhone refresh and Apple sign-in still require verification in AltStore.')
+    print('If AltStore fails with -22411 and shows no code field, run: sudo altserver-apple-trust')
 
 
 def main():
@@ -259,6 +324,8 @@ def main():
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--prepare', action='store_true', help='install dependencies and stage binaries (default)')
     group.add_argument('--configure', action='store_true', help='pairing must already exist; activate services')
+    group.add_argument('--import-apple-runtime', metavar='ARCHIVE',
+                       help='install Apple iCloud runtime exported by scripts/windows/export-apple-runtime.ps1')
     args = parser.parse_args()
     preflight()
     import fcntl
@@ -267,7 +334,10 @@ def main():
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise ValueError('Another setup process is running')
-        configure() if args.configure else prepare()
+        if args.import_apple_runtime:
+            import_apple_runtime(args.import_apple_runtime)
+        else:
+            configure() if args.configure else prepare()
 
 
 if __name__ == '__main__':

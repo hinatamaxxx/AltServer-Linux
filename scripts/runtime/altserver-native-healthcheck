@@ -43,7 +43,7 @@ unhealthy=0
 if "$probe" anisette; then
   reset anisette
 else
-  recover anisette altserver-anisette-docker.service
+  recover anisette altserver-icloud-local.service
   unhealthy=1
 fi
 

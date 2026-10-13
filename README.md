@@ -8,7 +8,7 @@
 
 [取り込み元と URL](docs/provenance.md)・[公式実装の調査と取り込み方針](docs/upstream-review.md)を公開しています。新しいタブで開くリンクは、[リンク一覧 HTML](docs/sources.html)をダウンロードしてブラウザーで開くと利用できます。GitHub 上の README では新しいタブを強制できないため、Ctrl+クリック（Mac は Command+クリック）を使ってください。
 
-AltServer、公式 netmuxd、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上で動作し、systemd が起動と監視を担当します。
+AltServer、公式 netmuxd、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上の Wine で Windows 版 iCloud のライブラリを動かして生成し、systemd が起動と監視を担当します。Android 系 Anisette（anisette-v3-server）は Apple に拒否される（`-80045`）ため、v0.4.0 で置き換えました。
 
 セットアップでは、netmuxd の公式最新リリースを取得します。検証に使用したバージョンは[検証記録](docs/verification.md)に記載しています。
 
@@ -22,7 +22,13 @@ cd AltServer-Linux
 sudo sh install.sh --prepare
 ```
 
-**準備には iPhone も Apple アカウントも不要です。AltServer はまだ有効化しません。** 依存環境とチェックサム検証済みバイナリを導入し、取得した Anisette イメージをダイジェストで固定します。引数なしでも準備のみを実行します。
+**準備には iPhone も Apple アカウントも不要です。AltServer はまだ有効化しません。** 依存環境とチェックサム検証済みバイナリを導入し、Anisette 用コンテナイメージをビルドしてイメージ ID で固定します。引数なしでも準備のみを実行します。
+
+次に、Apple の iCloud ライブラリを取り込みます。Apple のファイルは再配布できないため、本リポジトリには含みません。Windows 版 AltServer と iCloud が動作する Windows PC で [scripts/windows/export-apple-runtime.ps1](scripts/windows/export-apple-runtime.ps1) を実行し、作成された `apple-runtime.tar.gz` を Debian にコピーします。Windows PC が必要なのはこの1回だけです。
+
+```sh
+sudo sh install.sh --import-apple-runtime apple-runtime.tar.gz
+```
 
 準備完了後、iPhone を1台だけ USB 接続し、ペアリング・「信頼」を完了してから有効化します。
 
@@ -31,9 +37,11 @@ sudo sh install.sh --configure
 sudo /usr/local/sbin/altserver-native-healthcheck
 ```
 
+AltStore で初めてサインインするとき、2要素認証のコード入力欄が出ずに `-22411` で失敗することがあります。Apple がこのサーバーを新しい端末として扱い、AltStore が対応していない方式の確認を求めるためです（[AltStore#1737](https://github.com/altstoreio/AltStore/issues/1737)）。その場合は iPhone の「設定 → 自分の名前 → サインインとセキュリティ → 2ファクタ認証 → 確認コードを受け取る」でコードを表示し、サーバーで `sudo altserver-apple-trust` を実行して入力してください。パスワードとコードは保存しません。
+
 ペアリング情報がない場合は、iPhone のロックを解除して `idevicepair pair` を実行し、「信頼」に応答してから再度 `sudo sh install.sh --configure` を実行してください。Wi-Fi 更新には、同一 LAN 上で通信できる iPhone とサーバー、および有効なペアリング情報が必要です。Tailscale は遠隔管理用で、Bonjour 探索や USB の信頼操作を代替しません。
 
-リリースの **AltServer-Linux-amd64-setup.tar.gz** を展開して、同じコマンドを実行する方法もあります。本フォークのバイナリと設定用ファイルを同梱します。Debian パッケージ、netmuxd、Anisette は準備時に取得するため、オフライン用ではありません。
+リリースの **AltServer-Linux-amd64-setup.tar.gz** を展開して、同じコマンドを実行する方法もあります。本フォークのバイナリと設定用ファイルを同梱します。Debian パッケージ、netmuxd、Anisette 用のコンテナ部品は準備時に取得するため、オフライン用ではありません。
 
 **既存環境があれば変更せず停止します。** [セットアップ・移行](docs/setup.md)を参照してください。
 
@@ -51,6 +59,7 @@ AltServerの設定後に実行してください。Tailscale経由のHTTPSで初
 
 ## 主な修正
 
+- v0.4.0: Apple に拒否される Android 系 Anisette を廃止し、Windows 版 iCloud ライブラリを Wine で動かすローカル Anisette に置き換えました。Apple のライブラリはハッシュで検証して取り込みます。AltStore で2要素認証の入力欄が出ない場合の信頼登録ツール `altserver-apple-trust` を追加しました。
 - v0.2.0: C++ 基盤と端末通信ライブラリの参照先を公式リポジトリへ変更。公式 Windows の 1.7.5 開発ソースに含まれる認証処理を取り込み、2FA の HTTP エラー判定・認証ログ・未知のエラーコード処理を修正しました。アドレス互換処理は入力部分に集約しています。版番号は `VERSION` で一元管理し、`--version` で確認できます。[保守手順](docs/maintenance.md)も追加しました。
 - v0.1.3: 互換アダプターを削除し、jaakkopalvaila の libimobiledevice 修正を取り込みました。AltServer が Linux/BSD の IPv4・IPv6 アドレスを直接扱います。コピー長の境界値も補強しています。公式上流へのマージを意味するものではありません。
 - v0.1.2: Bonjour ヘルパーの64ビット型・文字列とバイナリの受け渡しを修正し、登録 API の失敗を親プロセスへ返します。AltKeeper を参考に JSON 要求を 4 MiB までに制限し、不正な長さを本文受信前に拒否します。IPA 本体のサイズ制限ではありません。
@@ -80,8 +89,8 @@ docker build -f docker/Dockerfile.build --target export --output type=local,dest
 
 ## 個人情報・ライセンス・AI の利用
 
-Apple の認証情報、ペアリング情報、端末識別子、ログ、Anisette の状態をコミットしないでください。設定ファイルは権限 0600 で保存します。セットアップは Apple の認証情報を要求しません。
+Apple の認証情報、ペアリング情報、端末識別子、ログ、Anisette の状態（Wine の状態を含む）、Apple のライブラリをコミットしないでください。設定ファイルは権限 0600 で保存します。セットアップは Apple の認証情報を要求しません。
 
 本体は [AGPL-3.0](LICENSE)、取り込んだ復旧スクリプトは [MIT](LICENSE.autorecover) を維持します。依存ソフトウェアには各々のライセンスが適用されます。詳細は[取り込み元](docs/provenance.md)を参照してください。
 
-今回の作業は Codex の **GPT-6 Astra・High（高）**を使用し、このセッションのメタデータで確認しています。日英の校正には **Gemini 3.8 Flash・High（高）**を使用しました。以前の復旧機能は旧プロジェクトの記録どおり GPT-6 Astra・Low（低）を使用しています。AI の利用は実機互換性の検証を意味しません。
+今回の作業は Codex の **GPT-6 Astra・High（高）**を使用し、このセッションのメタデータで確認しています。日英の校正には **Gemini 3.8 Flash・High（高）**を使用しました。以前の復旧機能は旧プロジェクトの記録どおり GPT-6 Astra・Low（低）を使用しています。v0.4.0 の Wine 版 Anisette と信頼登録ツールは Claude Code の **Claude Opus 5.5** で作成し、既存の Debian サーバーと iPhone で更新できることを確認しました。AI の利用は実機互換性の検証を意味しません。
