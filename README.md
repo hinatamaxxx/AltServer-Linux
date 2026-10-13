@@ -1,20 +1,31 @@
-# AltServer-Linux — 自動復旧・簡単セットアップ
+# AltServer-Linux
 
 日本語 | [English](README.en.md)
 
-[NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux) のフォークです。本体の不具合修正と、[altserver-linux-native-autorecover](https://github.com/hinatamaxxx/altserver-linux-native-autorecover) の復旧機能をまとめています。
+自宅の Debian サーバーで AltServer を動かし、iPhone の AltStore から Wi-Fi 経由でアプリをリフレッシュするためのセットアップ一式です。Windows や Mac を常時起動しておく必要はありません。
 
-直接のフォーク元は **NyaMisty の非公式 Linux 移植版**です。AltStore チームが提供する公式 Linux 版ではありません。公式 AltServer のコードは [Windows 版](https://github.com/rileytestut/AltServer-Windows)と [macOS 版（AltStore 内）](https://github.com/altstoreio/AltStore/tree/classic/AltServer)で確認できます。
+[NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux) をもとにした**非公式のプレビュー版**です。AltStore の開発チームが提供するものではありません。
 
-[取り込み元と URL](docs/provenance.md)・[公式実装の調査と取り込み方針](docs/upstream-review.md)を公開しています。新しいタブで開くリンクは、[リンク一覧 HTML](docs/sources.html)をダウンロードしてブラウザーで開くと利用できます。GitHub 上の README では新しいタブを強制できないため、Ctrl+クリック（Mac は Command+クリック）を使ってください。
+## できること
 
-AltServer、公式 netmuxd、Avahi、usbmuxd、Docker、ローカル Anisette を一括導入します。AltServer と端末探索はホスト上、Anisette は Docker 上の Wine で Windows 版 iCloud のライブラリを動かして生成し、systemd が起動と監視を担当します。Android 系 Anisette（anisette-v3-server）は Apple に拒否される（`-80045`）ため、v0.4.0 で置き換えました。
+- iPhone の AltStore から、Debian 上の AltServer を使ってアプリをリフレッシュする
+- AltServer・iPhone との通信・Apple 認証用データ（Anisette）を systemd で常駐させ、止まったら自動で復旧する
+- サービスの状態確認や復旧操作を、ブラウザーの管理画面から行う（任意）
 
-セットアップでは、netmuxd の公式最新リリースを取得します。検証に使用したバージョンは[検証記録](docs/verification.md)に記載しています。
+## 必要なもの
 
-## 簡単な導入
+| 必要なもの | 用途 |
+| --- | --- |
+| Debian 12 または 13（amd64、systemd）とインターネット接続 | AltServer を常駐させるサーバー |
+| iPhone 1台と USB ケーブル | 最初のペアリング（「信頼」）に使います。以降は Wi-Fi で更新します |
+| Windows PC（Windows 版 AltServer と iCloud が動作するもの） | 最初に1回だけ、Apple の iCloud ライブラリを書き出すのに使います |
+| iPhone とサーバーが同じ LAN にあること | Wi-Fi 更新では、iPhone が LAN 内でサーバーを探して接続します |
 
-対象は **Debian 12/13・amd64・systemd 環境**です。amd64 以外の CPU アーキテクチャや Docker Desktop はこのインストーラの対象外です。インターネット接続が必要です。Debian 12 とクリーンな実機への新規導入は未検証です。
+amd64 以外の CPU や Docker Desktop は対象外です。Apple ID とパスワードは、セットアップでは入力しません。AltStore でサインインするときに使います。
+
+## 導入手順
+
+### 1. サーバーの準備
 
 ```sh
 git clone https://github.com/hinatamaxxx/AltServer-Linux.git
@@ -22,62 +33,95 @@ cd AltServer-Linux
 sudo sh install.sh --prepare
 ```
 
-**準備には iPhone も Apple アカウントも不要です。AltServer はまだ有効化しません。** 依存環境とチェックサム検証済みバイナリを導入し、Anisette 用コンテナイメージをビルドしてイメージ ID で固定します。引数なしでも準備のみを実行します。
+必要なパッケージ、AltServer、netmuxd を導入し、Anisette 用のコンテナイメージをビルドします。この段階では iPhone は不要で、AltServer もまだ起動しません。[リリース](https://github.com/hinatamaxxx/AltServer-Linux/releases)の `AltServer-Linux-amd64-setup.tar.gz` を展開して、同じコマンドを実行してもかまいません。
 
-次に、Apple の iCloud ライブラリを取り込みます。Apple のファイルは再配布できないため、本リポジトリには含みません。Windows 版 AltServer と iCloud が動作する Windows PC で [scripts/windows/export-apple-runtime.ps1](scripts/windows/export-apple-runtime.ps1) を実行し、作成された `apple-runtime.tar.gz` を Debian にコピーします。Windows PC が必要なのはこの1回だけです。
+### 2. Apple の iCloud ライブラリの取り込み
+
+Apple への認証には、Windows 版 iCloud のライブラリを Wine で動かして作るデータを使います。Apple のファイルは再配布できないため、このリポジトリには含めていません。
+
+Windows PC で、このリポジトリの `scripts\windows\export-apple-runtime.ps1` を実行します。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\export-apple-runtime.ps1
+```
+
+作成された `apple-runtime.tar.gz` をサーバーにコピーし、取り込みます。
 
 ```sh
 sudo sh install.sh --import-apple-runtime apple-runtime.tar.gz
 ```
 
-準備完了後、iPhone を1台だけ USB 接続し、ペアリング・「信頼」を完了してから有効化します。
+取り込み時に、ライブラリの版をハッシュで確認します。Apple ID やパスワードは含まれません。
+
+### 3. iPhone の接続と有効化
+
+iPhone を1台だけ USB で接続し、iPhone に表示される「このコンピュータを信頼しますか？」で「信頼」を選びます。そのうえで有効化します。
 
 ```sh
 sudo sh install.sh --configure
 sudo /usr/local/sbin/altserver-native-healthcheck
 ```
 
-AltStore で初めてサインインするとき、2要素認証のコード入力欄が出ずに `-22411` で失敗することがあります。Apple がこのサーバーを新しい端末として扱い、AltStore が対応していない方式の確認を求めるためです（[AltStore#1737](https://github.com/altstoreio/AltStore/issues/1737)）。その場合は iPhone の「設定 → 自分の名前 → サインインとセキュリティ → 2ファクタ認証 → 確認コードを受け取る」でコードを表示し、サーバーで `sudo altserver-apple-trust` を実行して入力してください。パスワードとコードは保存しません。
+ペアリング情報がないと言われた場合は、iPhone のロックを解除して `idevicepair pair` を実行し、「信頼」を選んでから `--configure` をやり直してください。
 
-ペアリング情報がない場合は、iPhone のロックを解除して `idevicepair pair` を実行し、「信頼」に応答してから再度 `sudo sh install.sh --configure` を実行してください。Wi-Fi 更新には、同一 LAN 上で通信できる iPhone とサーバー、および有効なペアリング情報が必要です。Tailscale は遠隔管理用で、Bonjour 探索や USB の信頼操作を代替しません。
+### 4. AltStore でのサインインとリフレッシュ
 
-リリースの **AltServer-Linux-amd64-setup.tar.gz** を展開して、同じコマンドを実行する方法もあります。本フォークのバイナリと設定用ファイルを同梱します。Debian パッケージ、netmuxd、Anisette 用のコンテナ部品は準備時に取得するため、オフライン用ではありません。
+iPhone を USB から外し、サーバーと同じ Wi-Fi につないだ状態で、AltStore からリフレッシュします。
 
-**既存環境があれば変更せず停止します。** [セットアップ・移行](docs/setup.md)を参照してください。
+初めてのサインインでは、2要素認証のコード入力欄が出ずに `-22411` で失敗することがあります。Apple がサーバーを新しい端末として扱い、AltStore が対応していない方式の確認を求めるためです（[AltStore#1737](https://github.com/altstoreio/AltStore/issues/1737)）。その場合は次の手順で一度だけサーバーを信頼させてください。
 
-## Web管理画面（オプション）
+1. iPhone の「設定」→ 自分の名前 →「サインインとセキュリティ」→「2ファクタ認証」→「確認コードを受け取る」でコードを表示します。
+2. サーバーで `sudo altserver-apple-trust` を実行し、Apple ID・パスワード・表示されたコードを入力します。
+3. `Success` と表示されたら、AltStore でもう一度リフレッシュします。
 
-管理画面のサポート対象は **Tailscale経由のHTTPS＋パスキー認証**です。サーバーとアクセスするPCの両方でTailscaleを利用してください。端末への独自CA証明書のインストールは不要です。TailscaleなしでのLAN公開やインターネットへの一般公開はサポートしません。
+入力したパスワードとコードは保存しません。
 
-サービス状態・iPhone接続・診断ログ・復旧操作をまとめた、日本語／英語の画面を追加できます。
+## 困ったとき
+
+| 症状 | 対処 |
+| --- | --- |
+| `AltServer could not be found`（エラー 1200） | iPhone の Wi-Fi をオフにしてからオンに戻し、もう一度リフレッシュします。iPhone とサーバーが同じ LAN にあるかも確認してください |
+| `-22411` で失敗し、コード入力欄が出ない | 上の「4. AltStore でのサインインとリフレッシュ」の手順で `altserver-apple-trust` を実行します |
+| `-80045`（This action cannot be completed at this time） | v0.3.x 以前の Android 系 Anisette が Apple に拒否されています。v0.4.0 へ移行してください（[移行手順](docs/setup.md)） |
+| サービスの状態を知りたい | `sudo /usr/local/sbin/altserver-native-healthcheck` を実行します。`healthy` なら正常、iPhone が近くにないときの `waiting_for_device` は通常の待機状態です |
+
+自動確認は、前回の確認が終わってから15秒後に行います。3回続けて失敗したときだけサービスを再起動し、再起動の間隔は5分以上あけます。`healthy` はサーバーと通信の確認結果で、アプリ更新の成功までは保証しません。自動確認が Apple にログインしたり、アプリを更新したりすることはありません。
+
+## Web 管理画面（任意）
+
+サービスの状態、iPhone との接続、診断ログ、復旧操作を、ブラウザーから日本語・英語で確認できます。サーバーとアクセスする PC の両方で Tailscale を使い、HTTPS とパスキーでログインします。
 
 ```sh
 sudo sh scripts/install-web-ui.sh --tailscale
 ```
 
-AltServerの設定後に実行してください。Tailscale経由のHTTPSで初回にパスキーを登録し、次回からパスキーでログインします。[導入・使い方](docs/web-ui.md)
+AltServer の有効化後に実行してください。Tailscale を使わない LAN 内公開や、インターネットへの公開はサポートしていません。詳しくは [Web 管理画面](docs/web-ui.md) を参照してください。
 
-## 主な修正
+## 仕組み
 
-- v0.4.0: Apple に拒否される Android 系 Anisette を廃止し、Windows 版 iCloud ライブラリを Wine で動かすローカル Anisette に置き換えました。Apple のライブラリはハッシュで検証して取り込みます。AltStore で2要素認証の入力欄が出ない場合の信頼登録ツール `altserver-apple-trust` を追加しました。
-- v0.2.0: C++ 基盤と端末通信ライブラリの参照先を公式リポジトリへ変更。公式 Windows の 1.7.5 開発ソースに含まれる認証処理を取り込み、2FA の HTTP エラー判定・認証ログ・未知のエラーコード処理を修正しました。アドレス互換処理は入力部分に集約しています。版番号は `VERSION` で一元管理し、`--version` で確認できます。[保守手順](docs/maintenance.md)も追加しました。
-- v0.1.3: 互換アダプターを削除し、jaakkopalvaila の libimobiledevice 修正を取り込みました。AltServer が Linux/BSD の IPv4・IPv6 アドレスを直接扱います。コピー長の境界値も補強しています。公式上流へのマージを意味するものではありません。
-- v0.1.2: Bonjour ヘルパーの64ビット型・文字列とバイナリの受け渡しを修正し、登録 API の失敗を親プロセスへ返します。AltKeeper を参考に JSON 要求を 4 MiB までに制限し、不正な長さを本文受信前に拒否します。IPA 本体のサイズ制限ではありません。
-- v0.1.1: 他フォークで報告された Apple ID 認証ヘッダーと GSA 接続の修正、AltServer for Windows 1.7.4 と同じ ldid ソースを取り込みました。新しい iOS での署名エラーへの対応が目的です。出典と採否は[フォーク調査](docs/fork-review.md)を参照してください。Apple への実ログインと iPhone 実機での動作は未検証です。
-- GSA の TLS 証明書検証を有効化し、既存コードにあった検証の無効化を除去。
-- Anisette の日時をホストのタイムゾーンに依存せず UTC として解釈。日付と64ビット routing info を検証。
-- Anisette 応答値のデバッグ出力を除去。HTTP 要求に15秒の制限を設定。
-- `-h` / `--help`、IPA 導入時の引数不足、`-a` から `-p` への処理の流れ込み、読めない IPA、失敗時の終了コードを修正。
-- USB 通信のゼロバイト転送や不正サイズを検出し、無限ループを防止。
-- Anisette の端末 ID と認証状態をコンテナの置き換え時も保持。
-- AltServer は公式 netmuxd に `127.0.0.1:27015` で直接接続し、公式 API で設定済み iPhone を再登録。
-- netmuxd を直接監視して復旧。iPhone 不在時もサービスを確認。
+| サービス | 役割 |
+| --- | --- |
+| `altserver-native.service` | AltServer 本体。LAN に Bonjour で存在を知らせ、AltStore からの要求を処理します |
+| `altserver-native-netmuxd.service` | Wi-Fi 上の iPhone との通信（公式 netmuxd） |
+| `altserver-icloud-local.service` | Apple 認証用データ（Anisette）を作る Docker コンテナ。Windows 版 iCloud のライブラリを Wine で動かします |
+| `iphone-mobdev-address.service` ほか | 設定した iPhone を見つけて netmuxd に登録します |
+| `altserver-native-healthcheck.timer` | 定期確認と自動復旧 |
 
-復旧は3回連続失敗後に行い、サービス再起動は5分間の間隔を確保します。確認の終了から15秒後に次の確認を開始します。`healthy` はサーバー・プロトコルの確認結果で、アプリ更新の成功を保証するものではありません。iPhone が不在なら `waiting_for_device` が通常の待機状態です。自動確認は Apple へのログインやアプリ更新を行いません。
+設定は `/etc/altserver-native.env`（権限 0600）に保存します。Apple が信頼した端末情報は `/var/lib/altserver-native/icloud-local` にあります。このディレクトリを消すと、Apple から新しい端末として扱われ、もう一度 `altserver-apple-trust` が必要になります。
 
-## 検証・ビルド
+## 更新・移行
 
-本フォークは **プレビュー版**です。v0.2.1では、既存のDebianサーバーとiOS 27.0 / AltStore Classic 2.3を使い、インストール済みアプリのリフレッシュ後に信頼を再設定せず起動できることを確認しました。新規導入、ホスト再起動後の復旧、長時間稼働は未検証です。詳細は[検証記録](docs/verification.md)を参照してください。
+インストーラーは、既存の環境を見つけると何も変更せずに停止します。v0.3.x からの移行は手動で行います。手順は[セットアップ・移行](docs/setup.md)を参照してください。
+
+## 注意事項
+
+- プレビュー版です。既存の Debian サーバーと iOS 27 の iPhone でリフレッシュできることを確認していますが、新規導入の一連の流れ、ホスト再起動後の動作、長時間の稼働は未検証です。詳細は[検証記録](docs/verification.md)にあります。
+- Apple の認証情報、ペアリング情報、端末識別子、ログ、Anisette や Wine の状態、Apple のライブラリはコミットしないでください。
+- 本体は [AGPL-3.0](LICENSE)、取り込んだ復旧スクリプトは [MIT](LICENSE.autorecover) です。依存ソフトウェアにはそれぞれのライセンスが適用されます。
+
+## 開発者向け
+
+ソースからビルドする場合は、次のコマンドを実行します。通常の導入にはビルド環境は不要です。
 
 ```sh
 git clone --recursive https://github.com/hinatamaxxx/AltServer-Linux.git
@@ -85,12 +129,11 @@ cd AltServer-Linux
 docker build -f docker/Dockerfile.build --target export --output type=local,dest=dist .
 ```
 
-上流の amd64 ビルド環境で本フォークのソースと固定されたサブモジュールをビルドします。通常のインストールにはビルド環境は不要です。[上流の説明](docs/upstream-readme.md)も参考用に残しています。
+- [変更履歴](docs/changelog.md)・各版のリリースノート（`docs/release-*.md`）
+- [取り込み元と URL](docs/provenance.md)・[リンク一覧 HTML](docs/sources.html)
+- [公式実装の調査](docs/upstream-review.md)・[フォーク調査](docs/fork-review.md)・[保守手順](docs/maintenance.md)
+- [上流の README](docs/upstream-readme.md)（参考用）
 
-## 個人情報・ライセンス・AI の利用
+公式 AltServer のコードは [Windows 版](https://github.com/rileytestut/AltServer-Windows)と [macOS 版（AltStore 内）](https://github.com/altstoreio/AltStore/tree/classic/AltServer)で確認できます。
 
-Apple の認証情報、ペアリング情報、端末識別子、ログ、Anisette の状態（Wine の状態を含む）、Apple のライブラリをコミットしないでください。設定ファイルは権限 0600 で保存します。セットアップは Apple の認証情報を要求しません。
-
-本体は [AGPL-3.0](LICENSE)、取り込んだ復旧スクリプトは [MIT](LICENSE.autorecover) を維持します。依存ソフトウェアには各々のライセンスが適用されます。詳細は[取り込み元](docs/provenance.md)を参照してください。
-
-今回の作業は Codex の **GPT-6 Astra・High（高）**を使用し、このセッションのメタデータで確認しています。日英の校正には **Gemini 3.8 Flash・High（高）**を使用しました。以前の復旧機能は旧プロジェクトの記録どおり GPT-6 Astra・Low（低）を使用しています。v0.4.0 の Wine 版 Anisette と信頼登録ツールは Claude Code の **Claude Opus 5.5** で作成し、既存の Debian サーバーと iPhone で更新できることを確認しました。AI の利用は実機互換性の検証を意味しません。
+これまでの作業には、Codex の GPT-6 Astra（High、以前の復旧機能は Low）を使い、日英の校正には Gemini 3.8 Flash（High）を使いました。v0.4.0 の Wine 版 Anisette、信頼登録ツール、この README の書き直しには、Claude Code の Claude Opus 5.5 を使っています。AI を使ったことは、実機での互換性を保証するものではありません。
