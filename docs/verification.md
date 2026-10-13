@@ -1,5 +1,15 @@
 # 検証記録 / Verification
 
+## v0.4.0 — Wine 版 Anisette / Wine Anisette
+
+2026-10-14（JST）、既存の Debian サーバーで確認しました。Android 系 Anisette は 2025-04 版・2026-10-01 版とも、AltStore の実際のサインインで `-80045` になりました。Wine 版は Apple の認証初期化を通りましたが、新しい端末として `hsc 409`（`au` なし）となり、AltStore はコード入力欄を出さずに `-22411` で失敗しました。信頼済みデバイスへのコード送信要求は HTTP 500、SMS は HTTP 405 でした。iPhone で手動発行した確認コードを `validate` に送ると受け付けられ、以後は `hsc 200` でトークンを発行できました。その後、iOS 27.0.1 の AltStore から Debian 経由でリフレッシュに成功しました（Windows 版 AltServer は停止）。
+
+リポジトリ版は、空の Wine 状態と書き出しスクリプトで作った Apple ライブラリから起動し、Apple の認証初期化に到達することを確認しました（架空アカウントで `-20101`）。取り込み処理の結果は手作業で用意したものと一致しました。リポジトリ版の Wine 状態での 2 要素認証と実機リフレッシュ、新規導入、ホスト再起動、長時間稼働は未検証です。
+
+On October 14, 2026 (JST), on the existing Debian server: the Android-based Anisette (2025-04 and 2026-10-01 images) failed real AltStore sign-ins with `-80045`. Wine Anisette passed Apple's authentication init but, as a new device, received `hsc 409` without `au`; AltStore failed with `-22411` and showed no code field. Requests for trusted-device and SMS codes returned HTTP 500 and 405. A code generated manually on the iPhone was accepted by `validate`, after which sign-in returned `hsc 200` and issued tokens. AltStore on iOS 27.0.1 then refreshed through Debian with Windows AltServer stopped.
+
+The repository build started from an empty Wine state and Apple libraries produced by the export script, and reached Apple's authentication init (`-20101` with a fictitious account). The import result matched the manually prepared runtime. Two-factor trust and device refresh on a repository-built Wine state, clean installation, host reboot and long-duration operation remain unverified.
+
 ## v0.3.0 — Web UI
 
 既存Debianサーバーへ管理画面のみを追加し、5サービスの状態、設定済みiPhoneの検出、Anisette・netmuxd通信・AltServer・iPhone接続の4診断を確認しました。追加前後で既存環境ファイルとAltServerバイナリのSHA-256が一致しました。画面のバージョン表示は実際に稼働しているAltServerを示します。

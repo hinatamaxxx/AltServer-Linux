@@ -8,7 +8,7 @@ The direct parent is **NyaMisty's unofficial Linux port**, not an official Linux
 
 See [sources and URLs](docs/provenance.md) and the [official-source review and adoption policy](docs/upstream-review.md). Download and open the [HTML source directory](docs/sources.html) in a browser for links that open in a new tab. GitHub README links cannot force this behavior; use Ctrl+click (Command+click on Mac).
 
-Setup installs AltServer, official netmuxd, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host; Anisette runs in Docker. systemd starts and monitors the services.
+Setup installs AltServer, official netmuxd, Avahi, usbmuxd, Docker and local Anisette. AltServer and device discovery run on the host. Anisette is generated in Docker by Apple's Windows iCloud libraries running under Wine. systemd starts and monitors the services. v0.4.0 replaced the Android-based Anisette (anisette-v3-server), which Apple now rejects with `-80045`.
 
 Setup downloads the latest official netmuxd release available at installation time. Versions used for testing are listed in the [verification record](docs/verification.md).
 
@@ -22,7 +22,13 @@ cd AltServer-Linux
 sudo sh install.sh --prepare
 ```
 
-**Preparation requires no iPhone or Apple account. AltServer remains inactive.** It installs dependencies and checksum-verified binaries, and pins Anisette to the digest of the image it pulled. Running without flags also performs preparation only.
+**Preparation requires no iPhone or Apple account. AltServer remains inactive.** It installs dependencies and checksum-verified binaries, builds the Anisette container image and pins it by image ID. Running without flags also performs preparation only.
+
+Next, import Apple's iCloud libraries. Apple's files cannot be redistributed and are not part of this repository. On a Windows PC where AltServer for Windows and iCloud work, run [scripts/windows/export-apple-runtime.ps1](scripts/windows/export-apple-runtime.ps1) and copy the resulting `apple-runtime.tar.gz` to the Debian host. The Windows PC is needed only for this step.
+
+```sh
+sudo sh install.sh --import-apple-runtime apple-runtime.tar.gz
+```
 
 Once prepared, connect one iPhone by USB, complete pairing/trust, and activate:
 
@@ -31,9 +37,11 @@ sudo sh install.sh --configure
 sudo /usr/local/sbin/altserver-native-healthcheck
 ```
 
+On the first AltStore sign-in, AltStore may fail with `-22411` without showing a verification-code field. Apple treats the server as a new device and requests a verification method AltStore does not handle ([AltStore#1737](https://github.com/altstoreio/AltStore/issues/1737)). Show a code on the iPhone under Settings > [your name] > Sign-In & Security > Two-Factor Authentication > Get Verification Code, then run `sudo altserver-apple-trust` on the server and enter it. The password and code are never stored.
+
 If the pairing record is missing, run `idevicepair pair` with the phone unlocked, respond to its Trust prompt, and rerun `sudo sh install.sh --configure`. Wi-Fi refresh requires a reachable phone and server on the same LAN and a valid pairing record. Tailscale provides remote administration; it does not replace Bonjour discovery or USB trust.
 
-Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release and run the same commands. It includes this fork's binary and setup files. Debian packages, netmuxd and Anisette are downloaded during preparation; this is not an offline installer.
+Alternatively, extract **AltServer-Linux-amd64-setup.tar.gz** from the release and run the same commands. It includes this fork's binary and setup files. Debian packages, netmuxd and the Anisette container components are downloaded during preparation; this is not an offline installer.
 
 **Setup stops without changing an existing installation.** See [setup and migration](docs/setup.md).
 
@@ -51,6 +59,7 @@ Requires a configured AltServer host. Uses Tailscale HTTPS: register a passkey o
 
 ## Changes
 
+- v0.4.0: Replace the Android-based Anisette, which Apple rejects, with local Anisette from Apple's Windows iCloud libraries running under Wine. Apple's libraries are imported with hash verification. Add `altserver-apple-trust` for AltStore sign-ins that show no two-factor code field.
 - v0.2.0: Move the C++ base and device libraries to official repositories. Adopt authentication code from the official Windows 1.7.5 development source, with fixes for 2FA HTTP errors, authentication logging and unknown error codes. Address compatibility is handled at the input boundary. `VERSION` is the shared version source, exposed by `--version`. See the new [maintenance guide](docs/maintenance.md).
 - v0.1.3: Remove the compatibility adapter and adopt jaakkopalvaila's libimobiledevice patch, so AltServer handles Linux/BSD IPv4 and IPv6 addresses directly. Address copy lengths are additionally bounded. This does not imply that the patch has been merged into official upstream.
 - v0.1.2: Fix the Bonjour helper's 64-bit types and text/binary argument handling, and report registration API failures to the parent process. Following AltKeeper's approach, reject invalid JSON request lengths before reading the body and cap JSON frames at 4 MiB. This limit does not apply to IPA payloads.
@@ -80,8 +89,8 @@ The upstream amd64 build environment compiles this fork's source and pinned subm
 
 ## Privacy, licenses and AI assistance
 
-Never commit Apple credentials, pairing records, device identifiers, logs or Anisette state. Configuration is stored with mode 0600. Setup does not request Apple credentials.
+Never commit Apple credentials, pairing records, device identifiers, logs, Anisette state (including Wine state) or Apple's libraries. Configuration is stored with mode 0600. Setup does not request Apple credentials.
 
 AltServer-Linux retains [AGPL-3.0](LICENSE); imported recovery scripts retain [MIT](LICENSE.autorecover). Dependencies retain their respective licenses. See [provenance](docs/provenance.md).
 
-This work used **GPT-6 Astra, High reasoning**, through Codex, verified from this session's metadata. **Gemini 3.8 Flash, High reasoning**, proofread the Japanese and English documentation. Earlier recovery work used GPT-6 Astra, Low reasoning, as recorded in the predecessor project. AI assistance is not evidence of device compatibility.
+This work used **GPT-6 Astra, High reasoning**, through Codex, verified from this session's metadata. **Gemini 3.8 Flash, High reasoning**, proofread the Japanese and English documentation. Earlier recovery work used GPT-6 Astra, Low reasoning, as recorded in the predecessor project. The v0.4.0 Wine Anisette and trust tool were written with **Claude Opus 5.5** in Claude Code and confirmed by a refresh on the existing Debian server and iPhone. AI assistance is not evidence of device compatibility.

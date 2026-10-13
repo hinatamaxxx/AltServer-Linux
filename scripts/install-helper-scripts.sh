@@ -5,14 +5,14 @@ ENV_FILE="${ENV_FILE:-/etc/altserver-native.env}"
 install -d /usr/local/sbin
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 cd "$script_dir"
-install -m 0755 scripts/runtime/altserver-anisette-migrate /usr/local/sbin/altserver-anisette-migrate
 install -m 0755 scripts/runtime/altserver-native-probe /usr/local/sbin/altserver-native-probe
 
 install -m 0755 scripts/runtime/iphone-mobdev-address-publisher /usr/local/sbin/iphone-mobdev-address-publisher
 install -m 0755 scripts/runtime/iphone-mobdev-service-publisher /usr/local/sbin/iphone-mobdev-service-publisher
 install -m 0755 scripts/runtime/altserver-native-healthcheck /usr/local/sbin/altserver-native-healthcheck
 install -m 0755 scripts/runtime/altserver-native-boot-recover /usr/local/sbin/altserver-native-boot-recover
-install -m 0755 scripts/runtime/altserver-anisette-docker-run /usr/local/sbin/altserver-anisette-docker-run
+install -m 0755 scripts/runtime/altserver-icloud-anisette-run /usr/local/sbin/altserver-icloud-anisette-run
+install -m 0755 scripts/runtime/altserver-apple-trust /usr/local/sbin/altserver-apple-trust
 
 cat >/etc/systemd/system/altserver-native-healthcheck.service <<UNIT
 [Unit]
@@ -45,8 +45,8 @@ UNIT
 cat >/etc/systemd/system/altserver-native-boot-recover.service <<UNIT
 [Unit]
 Description=Run AltServer Wi-Fi refresh recovery after boot
-After=network-online.target docker.service avahi-daemon.service altserver-anisette-docker.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
-Wants=network-online.target docker.service avahi-daemon.service altserver-anisette-docker.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
+After=network-online.target docker.service avahi-daemon.service altserver-icloud-local.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
+Wants=network-online.target docker.service avahi-daemon.service altserver-icloud-local.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
 
 [Service]
 Type=oneshot

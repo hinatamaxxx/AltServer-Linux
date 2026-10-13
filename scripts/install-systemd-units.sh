@@ -35,8 +35,8 @@ UNIT
 cat >/etc/systemd/system/altserver-native.service <<UNIT
 [Unit]
 Description=AltServer native
-After=network-online.target avahi-daemon.service altserver-anisette-docker.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
-Wants=network-online.target avahi-daemon.service altserver-anisette-docker.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
+After=network-online.target avahi-daemon.service altserver-icloud-local.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
+Wants=network-online.target avahi-daemon.service altserver-icloud-local.service altserver-native-netmuxd.service iphone-mobdev-address.service iphone-mobdev-service.service
 
 [Service]
 Type=simple
@@ -51,22 +51,24 @@ RestartSec=5
 WantedBy=multi-user.target
 UNIT
 
-cat >/etc/systemd/system/altserver-anisette-docker.service <<UNIT
+cat >/etc/systemd/system/altserver-icloud-local.service <<UNIT
 [Unit]
-Description=AltServer anisette compatibility container
+Description=AltServer local iCloud anisette provider (Wine)
 After=docker.service docker.socket containerd.service network-online.target
 Requires=docker.service
 Wants=network-online.target
+# Starts once install.sh --import-apple-runtime has installed Apple's runtime.
+ConditionPathExists=${ICLOUD_ANISETTE_APPLE_DIR}/AppleIncRootCertificate.cer
 
 [Service]
 Type=simple
 Environment="ENV_FILE=${ENV_FILE}"
 Restart=always
-RestartSec=5
-TimeoutStartSec=60
+RestartSec=10
+TimeoutStartSec=120
 ExecStartPre=/bin/sh -c 'i=0; while [ "\$i" -lt 30 ]; do /usr/bin/docker info >/dev/null 2>&1 && exit 0; i=\$((i+1)); sleep 2; done; exit 1'
-ExecStart=/usr/local/sbin/altserver-anisette-docker-run
-ExecStop=/usr/bin/docker stop altserver-anisette
+ExecStart=/usr/local/sbin/altserver-icloud-anisette-run
+ExecStop=/usr/bin/docker stop --time 10 altserver-icloud-local
 
 [Install]
 WantedBy=multi-user.target
@@ -110,7 +112,7 @@ UNIT
 
 systemctl daemon-reload
 systemctl enable docker.service avahi-daemon.service
-systemctl enable altserver-anisette-docker.service
+systemctl enable altserver-icloud-local.service
 systemctl enable altserver-native-netmuxd.service
 systemctl enable iphone-mobdev-address.service iphone-mobdev-service.service
 systemctl enable altserver-native.service

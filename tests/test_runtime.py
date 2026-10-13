@@ -1,6 +1,5 @@
 import importlib.machinery
 import importlib.util
-import json
 import os
 from pathlib import Path
 import plistlib
@@ -25,7 +24,7 @@ def load(name):
 
 
 probe = load("altserver-native-probe")
-migration = load("altserver-anisette-migrate")
+trust = load("altserver-apple-trust")
 MAC = ":".join(["ab"] * 6)
 UDID = "test-device"
 
@@ -99,38 +98,77 @@ class ProbeTests(unittest.TestCase):
             self.assertIsNone(probe.discover())
 
 
-@unittest.skipUnless(hasattr(os, "chown"), "requires Linux ownership semantics")
-class MigrationTests(unittest.TestCase):
-    def test_preserves_existing_container_identity(self):
+class TrustTests(unittest.TestCase):
+    def test_reads_quoted_configuration(self):
         with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp) / "state"
+            config = Path(tmp) / "config"
+            config.write_text("# comment\nANISETTE_URL=http://127.0.0.1:6972/\n"
+                              "ICLOUD_ANISETTE_APPLE_DIR='/opt/altserver-native/icloud-local/apple'\nEMPTY=''\n")
+            values = trust.configuration(str(config))
+        self.assertEqual(values["ANISETTE_URL"], "http://127.0.0.1:6972/")
+        self.assertEqual(values["ICLOUD_ANISETTE_APPLE_DIR"], "/opt/altserver-native/icloud-local/apple")
+        self.assertEqual(values["EMPTY"], "")
 
-            def docker(*args):
-                if args[0] == "ps":
-                    return "container-id\n"
-                if args[0] == "inspect":
-                    return json.dumps([{"Config": {"Image": "dadoum/anisette-v3-server:latest"}}])
-                if args[0] == "cp":
-                    stage = Path(args[-1])
-                    (stage / "device.json").write_text('{"test": "identity"}')
-                    (stage / "adi.pb").write_bytes(b"provisioning-fixture")
-                    return ""
-                self.fail("Unexpected Docker mutation")
+    def test_session_data_without_xml_prolog(self):
+        try:
+            from cryptography.hazmat.primitives import padding
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        except ImportError:
+            self.skipTest("cryptography unavailable")
+        import hashlib
+        import hmac
+        session = b"synthetic-session-key"
+        body = b'<plist version="1.0"><dict><key>adsid</key><string>fixture</string></dict></plist>'
+        key = hmac.new(session, b"extra data key:", hashlib.sha256).digest()
+        iv = hmac.new(session, b"extra data iv:", hashlib.sha256).digest()[:16]
+        padder = padding.PKCS7(128).padder()
+        encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+        encrypted = encryptor.update(padder.update(body) + padder.finalize()) + encryptor.finalize()
+        self.assertEqual(trust.decrypt_spd(session, encrypted), {"adsid": "fixture"})
 
-            with patch.dict(os.environ, {"ANISETTE_STATE_DIR": str(target)}), \
-                    patch.object(migration, "docker", side_effect=docker), patch.object(os, "chown"):
-                migration.main()
-                migration.main()
-            self.assertEqual((target / "adi.pb").read_bytes(), b"provisioning-fixture")
-            self.assertEqual((target / "device.json").stat().st_mode & 0o777, 0o600)
-            self.assertEqual(len(list(Path(tmp).glob("anisette-backup-*"))), 1)
+    def test_refuses_non_interactive_use(self):
+        with patch("sys.stdin") as stdin:
+            stdin.isatty.return_value = False
+            with self.assertRaises(SystemExit):
+                trust.main()
 
-    def test_incomplete_state_fails_closed(self):
+
+@unittest.skipUnless(os.name == "posix", "requires POSIX shell")
+class IcloudRunTests(unittest.TestCase):
+    def run_script(self, directory, apple):
+        (directory / "config").write_text(
+            f"ICLOUD_ANISETTE_IMAGE=sha256:{'a' * 64}\nICLOUD_ANISETTE_STATE_DIR={directory / 'state'}\n"
+            f"ICLOUD_ANISETTE_APPLE_DIR={apple}\n")
+        docker = directory / "docker"
+        docker.write_text('#!/bin/sh\necho "$*" >>"$CALLS"\n')
+        docker.chmod(0o755)
+        script = (ROOT / "scripts/runtime/altserver-icloud-anisette-run").read_text()
+        (directory / "run").write_text(script.replace("/usr/bin/docker", str(docker)))
+        env = dict(os.environ, ENV_FILE=str(directory / "config"), CALLS=str(directory / "calls"))
+        return subprocess.run(["sh", str(directory / "run")], env=env, capture_output=True, text=True)
+
+    def test_waits_for_apple_runtime(self):
         with tempfile.TemporaryDirectory() as tmp:
-            target = Path(tmp)
-            (target / "device.json").write_text("{}")
-            with patch.dict(os.environ, {"ANISETTE_STATE_DIR": str(target)}), self.assertRaises(SystemExit):
-                migration.main()
+            directory = Path(tmp)
+            result = self.run_script(directory, directory / "missing")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("--import-apple-runtime", result.stderr)
+            self.assertFalse((directory / "calls").exists())
+
+    def test_runs_pinned_image_with_private_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            apple = directory / "apple"
+            apple.mkdir()
+            (apple / "AppleIncRootCertificate.cer").write_bytes(b"fixture")
+            result = self.run_script(directory, apple)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            run = (directory / "calls").read_text().splitlines()[-1]
+            self.assertIn("-p 127.0.0.1:6972:6969", run)
+            self.assertIn(f"{apple}:/apple:ro", run)
+            self.assertIn("--cap-drop ALL", run)
+            self.assertTrue(run.endswith("sha256:" + "a" * 64))
+            self.assertEqual((directory / "state").stat().st_mode & 0o777, 0o700)
 
 
 @unittest.skipUnless(os.name == "posix", "requires POSIX shell")

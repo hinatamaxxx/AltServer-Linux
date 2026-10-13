@@ -10,7 +10,7 @@ import urllib.request
 parser = argparse.ArgumentParser()
 parser.add_argument("action", choices=["capture", "compare"])
 parser.add_argument("--baseline", type=Path, required=True)
-parser.add_argument("--url", default="http://127.0.0.1:6969/")
+parser.add_argument("--url", default="http://127.0.0.1:6972/")
 args = parser.parse_args()
 with urllib.request.urlopen(args.url, timeout=10) as response:
     data = json.loads(response.read(1024 * 1024))
