@@ -1,5 +1,11 @@
 # 検証記録 / Verification
 
+## v0.4.1 — 安定性 / Stability
+
+2026-10-15 と 2026-10-23（JST）、既存の Debian サーバーで確認しました。`--init` なしのコンテナでは31分でゾンビプロセスが781個溜まり、約77分ごとに Anisette が `503` を返していました。`--init` 付きでは10回連続の要求後もプロセス数が3のままでした。DHCP でアドレスが変わった後は、ヘルスチェックが AltServer を24時間で268回再起動していました。修正後のプローブは、新しいアドレスでの告知を正常と判定しました。
+
+On 2026-10-15 and 2026-10-23 (JST), on the existing Debian server: without `--init`, 781 zombie processes accumulated in 31 minutes and Anisette returned `503` about every 77 minutes. With `--init`, the process count stayed at 3 after ten consecutive requests. After a DHCP address change, the health check had restarted AltServer 268 times in 24 hours; the fixed probe accepted the announcement on the new address.
+
 ## v0.4.0 — Wine 版 Anisette / Wine Anisette
 
 2026-10-14（JST）、既存の Debian サーバーで確認しました。Android 系 Anisette は 2025-04 版・2026-10-01 版とも、AltStore の実際のサインインで `-80045` になりました。Wine 版は Apple の認証初期化を通りましたが、新しい端末として `hsc 409`（`au` なし）となり、AltStore はコード入力欄を出さずに `-22411` で失敗しました。信頼済みデバイスへのコード送信要求は HTTP 500、SMS は HTTP 405 でした。iPhone で手動発行した確認コードを `validate` に送ると受け付けられ、以後は `hsc 200` でトークンを発行できました。その後、iOS 27.0.1 の AltStore から Debian 経由でリフレッシュに成功しました（Windows 版 AltServer は停止）。
