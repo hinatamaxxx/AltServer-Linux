@@ -125,6 +125,16 @@ def discover():
     return None
 
 
+def host_ipv4_addresses():
+    try:
+        interfaces = json.loads(output(["ip", "-j", "-4", "addr", "show"]))
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return set()
+    return {entry["local"] for interface in interfaces if isinstance(interface, dict)
+            for entry in interface.get("addr_info", [])
+            if isinstance(entry, dict) and entry.get("family") == "inet" and entry.get("local")}
+
+
 def port_open(address):
     try:
         with socket.create_connection((address, 62078), timeout=2):
@@ -181,8 +191,10 @@ def main():
                 if len(fields) >= 4:
                     ports.add(fields[3].rsplit(":", 1)[-1])
         records = output(["avahi-browse", "-prt", "_altserver._tcp"], timeout=8)
+        # DHCP can change the LAN address; accept any address the host currently holds.
+        addresses = host_ipv4_addresses() | {os.environ.get("ALTSERVER_HOST_IP", "")}
         matched = [r["port"] for r in mdns_records(records) if r["service"] == "_altserver._tcp"
-                   and r["ip"] == os.environ["ALTSERVER_HOST_IP"] and r["port"] in ports]
+                   and r["ip"] in addresses and r["port"] in ports]
         return 0 if matched and altserver_protocol(matched[0]) else 1
     if action == "query":
         devices()

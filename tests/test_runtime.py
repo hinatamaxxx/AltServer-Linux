@@ -1,5 +1,6 @@
 import importlib.machinery
 import importlib.util
+import json
 import os
 from pathlib import Path
 import plistlib
@@ -86,6 +87,15 @@ class ProbeTests(unittest.TestCase):
         ])
         self.assertEqual(probe.candidates("", records, MAC, UDID, ""), ["203.0.113.4"])
 
+    def test_host_addresses_follow_dhcp_changes(self):
+        interfaces = [{"ifname": "lo", "addr_info": [{"family": "inet", "local": "127.0.0.1"}]},
+                      {"ifname": "eth0", "addr_info": [{"family": "inet", "local": "192.0.2.27"},
+                                                        {"family": "inet6", "local": "2001:db8::1"}]}]
+        with patch.object(probe, "output", return_value=json.dumps(interfaces)):
+            self.assertEqual(probe.host_ipv4_addresses(), {"127.0.0.1", "192.0.2.27"})
+        with patch.object(probe, "output", return_value=""):
+            self.assertEqual(probe.host_ipv4_addresses(), set())
+
     def test_neighbor_mac_is_exact(self):
         lines = f"203.0.113.5 dev eth0 lladdr {MAC} REACHABLE\n203.0.113.6 dev eth0 lladdr {MAC}00 REACHABLE"
         self.assertEqual(probe.candidates(lines, "", MAC, UDID, ""), ["203.0.113.5"])
@@ -167,6 +177,7 @@ class IcloudRunTests(unittest.TestCase):
             self.assertIn("-p 127.0.0.1:6972:6969", run)
             self.assertIn(f"{apple}:/apple:ro", run)
             self.assertIn("--cap-drop ALL", run)
+            self.assertIn("--init", run)
             self.assertTrue(run.endswith("sha256:" + "a" * 64))
             self.assertEqual((directory / "state").stat().st_mode & 0o777, 0o700)
 

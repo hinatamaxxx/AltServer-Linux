@@ -14,6 +14,7 @@ fi
 # The Wine prefix holds the provisioned identity Apple trusts; never recreate it here.
 install -d -m 0700 "$state"
 /usr/bin/docker rm -f altserver-icloud-local >/dev/null 2>&1 || true
-exec /usr/bin/docker run --rm --name altserver-icloud-local --hostname altserver-icloud \
+# --init reaps the processes Wine leaves behind; without it zombies exhaust the PID limit.
+exec /usr/bin/docker run --rm --init --name altserver-icloud-local --hostname altserver-icloud \
   --memory 512m --memory-swap 768m --cap-drop ALL --security-opt no-new-privileges \
   -p 127.0.0.1:6972:6969 -v "$state:/state" -v "$apple:/apple:ro" "$image"
