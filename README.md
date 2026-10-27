@@ -2,6 +2,9 @@
 
 日本語 | [English](README.en.md)
 
+> [!WARNING]
+> **このリポジトリのメンテナンスは終了しました。** 2026年10月下旬から、Apple 側の変更で無料の Apple ID による署名がエラー（`-80046`、AltStore 2.3.1 の `HTTP 503` など）で通らなくなりました。対応を続けるのが負担になったため、作者は Apple Developer Program（有料）に登録して自分で署名する方法に切り替えました。今後の更新、不具合の修正、問い合わせへの対応は行いません。コードと文書は参考として残しています。
+
 自宅の Debian サーバーで AltServer を動かし、iPhone の AltStore から Wi-Fi 経由でアプリをリフレッシュするためのセットアップ一式です。Windows や Mac を常時起動しておく必要はありません。
 
 [NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux) をもとにした**非公式のプレビュー版**です。AltStore の開発チームが提供するものではありません。
