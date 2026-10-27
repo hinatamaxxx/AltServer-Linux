@@ -2,6 +2,9 @@
 
 [日本語](README.md) | English
 
+> [!WARNING]
+> **This repository is no longer maintained.** Since late October 2026, Apple-side changes have made free Apple ID signing fail with errors such as `-80046` and, with AltStore 2.3.1, `HTTP 503`. Keeping up became too much work, so the author switched to signing with a paid Apple Developer Program membership. There will be no further updates, bug fixes or support. The code and documentation remain for reference.
+
 A complete setup for running AltServer on a Debian server at home, so the AltStore app on your iPhone can refresh apps over Wi-Fi. No Windows PC or Mac has to stay on.
 
 This is an **unofficial preview** based on [NyaMisty/AltServer-Linux](https://github.com/NyaMisty/AltServer-Linux). It is not provided by the AltStore team.
